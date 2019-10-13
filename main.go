@@ -35,6 +35,7 @@ func main() {
 		Aliases: []string{"-shit", "-bitch"},
 		Execute: func(data CommandData) {
 			fmt.Println("You executed " + data.Label)
+			data.sendMessage(data.toString())
 		}}
 
 	Commands = append(Commands, command)
