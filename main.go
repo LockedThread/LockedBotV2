@@ -11,8 +11,8 @@ import (
 )
 
 var (
-	Token    string
-	Commands []Command
+	Token      string
+	CommandMap map[string]*Command
 )
 
 func init() {
@@ -21,6 +21,7 @@ func init() {
 }
 
 func main() {
+	CommandMap = make(map[string]*Command)
 	discord, err := discordgo.New("Bot " + Token)
 	checkErr(err)
 	err = discord.Open()
@@ -38,7 +39,7 @@ func main() {
 			data.sendMessage(data.toString())
 		}}
 
-	Commands = append(Commands, command)
+	registerCommand(command.Aliases, &command)
 
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
@@ -53,29 +54,35 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 	splitMessage := strings.Split(m.Message.Content, " ")
-	for commandIndex := range Commands {
-		command := Commands[commandIndex]
-		for aliasIndex := range command.Aliases {
-			alias := command.Aliases[aliasIndex]
-			if strings.ToLower(alias) == strings.ToLower(splitMessage[0]) {
-				channel, err := s.Channel(m.ChannelID)
-				checkErr(err)
+	command := findCommand(splitMessage[0])
 
-				var arguments []string
-				if len(splitMessage) >= 2 {
-					arguments = splitMessage[1:]
-				} else {
-					arguments = []string{}
-				}
+	if command != nil {
+		channel, err := s.Channel(m.ChannelID)
+		checkErr(err)
 
-				command.execute(CommandData{
-					Label:     splitMessage[0],
-					User:      m.Author,
-					Arguments: arguments,
-					Channel:   channel,
-					Session:   s,
-				})
-			}
+		var arguments []string
+		if len(splitMessage) >= 2 {
+			arguments = splitMessage[1:]
+		} else {
+			arguments = []string{}
 		}
+
+		command.execute(CommandData{
+			Label:     splitMessage[0],
+			User:      m.Author,
+			Arguments: arguments,
+			Channel:   channel,
+			Session:   s,
+		})
 	}
+}
+
+func registerCommand(aliases []string, command *Command) {
+	for aliasIndex := range aliases {
+		CommandMap[strings.ToLower(aliases[aliasIndex])] = command
+	}
+}
+
+func findCommand(label string) *Command {
+	return CommandMap[strings.ToLower(label)]
 }

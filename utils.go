@@ -26,6 +26,5 @@ func SplitSubN(s string, n int) []string {
 			subs = append(subs, sub)
 		}
 	}
-
 	return subs
 }
