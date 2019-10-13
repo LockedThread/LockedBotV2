@@ -13,7 +13,14 @@ func (c Command) execute(data CommandData) {
 
 type CommandData struct {
 	Label     string
-	User      *discordgo.User
 	Arguments []string
+	Session   *discordgo.Session
+	User      *discordgo.User
 	Channel   *discordgo.Channel
+}
+
+func (data CommandData) sendMessage(message string) *discordgo.Message {
+	send, err := data.Session.ChannelMessageSend(data.Channel.ID, message)
+	checkErr(err)
+	return send
 }

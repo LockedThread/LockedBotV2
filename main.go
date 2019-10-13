@@ -59,11 +59,20 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			if strings.ToLower(alias) == strings.ToLower(splitMessage[0]) {
 				channel, err := s.Channel(m.ChannelID)
 				checkErr(err)
+
+				var arguments []string
+				if len(splitMessage) >= 2 {
+					arguments = splitMessage[1:]
+				} else {
+					arguments = []string{}
+				}
+
 				command.execute(CommandData{
 					Label:     splitMessage[0],
 					User:      m.Author,
-					Arguments: splitMessage[1:],
+					Arguments: arguments,
 					Channel:   channel,
+					Session:   s,
 				})
 			}
 		}
