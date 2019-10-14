@@ -10,6 +10,10 @@ import (
 	"syscall"
 )
 
+const (
+	OWNER = "545743465267593216"
+)
+
 var (
 	Token      string
 	CommandMap map[string]*Command
@@ -33,10 +37,40 @@ func main() {
 	discord.AddHandler(messageCreate)
 
 	command := Command{
-		Aliases: []string{"-shit", "-bitch"},
+		Aliases: []string{"-setuser"},
 		Execute: func(data CommandData) {
 			fmt.Println("You executed " + data.Label)
-			data.sendMessage(data.toString())
+			fmt.Println(data.toString())
+
+			if isOwner(data.User) {
+				switch len(data.Arguments) {
+				case 0:
+				case 1:
+					data.sendMessage("-setuser [@mention] [role]")
+					break
+				case 2:
+					//guild := getGuild(data.Session, data.GuildID)
+					mentions := data.Message.Mentions
+
+					guildMember, err := data.Session.GuildMember(data.GuildID, mentions[0].ID)
+					checkErr(err)
+					hasRole := hasRole(guildMember, data.Arguments[1])
+					guild := getGuild(data.Session, data.GuildID)
+					if !hasRole {
+						role := getRole(guild, data.Arguments[1])
+						err := data.Session.GuildMemberRoleAdd(guild.ID, data.User.ID, role.ID)
+						checkErr(err)
+						data.sendMessage()
+					} else {
+						data.sendMessage("You have set %s's ")
+					}
+
+					break
+				}
+			} else {
+
+			}
+
 		}}
 
 	registerCommand(command.Aliases, &command)
@@ -69,6 +103,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 		command.execute(CommandData{
 			Label:     splitMessage[0],
+			GuildID:   m.GuildID,
+			Message:   m.Message,
 			User:      m.Author,
 			Arguments: arguments,
 			Channel:   channel,
