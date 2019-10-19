@@ -32,7 +32,7 @@ func init() {
 func main() {
 	Config = Config.SetupConfig()
 
-	db, err := sql.Open("MySQL", Config.User+":"+Config.Password+"@tcp("+Config.Host+")/"+Config.DbName)
+	db, err := sql.Open("mysql", Config.User+":"+Config.Password+"@tcp("+Config.Host+")/"+Config.DbName)
 	checkErr(err)
 
 	MySQL = db
