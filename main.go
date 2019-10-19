@@ -15,10 +15,6 @@ import (
 
 import _ "github.com/go-sql-driver/mysql"
 
-const (
-	OWNER = "545743465267593216"
-)
-
 var (
 	mysql              *sql.DB = nil
 	Token              string
