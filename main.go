@@ -161,7 +161,7 @@ func main() {
 						checkErr(err)
 
 					} else {
-						data.sendMessage("Incorrect Syntax. Please do -createuser [@mention] [token]")
+						data.sendMessage("Incorrect Syntax. Please do -createclient [@mention] [token]")
 					}
 					break
 				}
