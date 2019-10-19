@@ -147,10 +147,10 @@ func main() {
 }
 
 func initPreparedStatements() {
-	stmt, err := MySQL.Prepare("INSERT INTO resources (resource_name, response_data) VALUES(?,?)")
+	stmt, err := MySQL.Prepare("INSERT INTO " + Config.Tables.ResourcesTable + " (resource_name, response_data) VALUES(?,?)")
 	checkErr(err)
 	StmtInsertResource = stmt
-	stmt, err = MySQL.Prepare("SELECT * FROM resources WHERE resource_name = ?")
+	stmt, err = MySQL.Prepare("SELECT * FROM " + Config.Tables.ResourcesTable + " WHERE resource_name = ?")
 	checkErr(err)
 	StmtFindResource = stmt
 }
