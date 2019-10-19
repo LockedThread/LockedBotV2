@@ -77,7 +77,7 @@ func getPrettyPrinted(data interface{}) ([]byte, error) {
 
 	err := encoder.Encode(data)
 	if err != nil {
-		return TEXT_EMPTY, err
+		return []byte{}, err
 	}
 	return buffer.Bytes(), nil
 }
