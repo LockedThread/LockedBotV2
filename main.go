@@ -1,22 +1,31 @@
 package main
 
 import (
+	"database/sql"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 )
 
+import _ "github.com/go-sql-driver/mysql"
+
 const (
 	OWNER = "545743465267593216"
 )
 
 var (
-	Token      string
-	CommandMap map[string]*Command
+	mysql              *sql.DB = nil
+	Token              string
+	CommandMap         map[string]*Command
+	UserMap            map[string]*User
+	Config             *Configuration
+	AvailableResources []Resource
 )
 
 func init() {
@@ -25,6 +34,15 @@ func init() {
 }
 
 func main() {
+	Config = Config.SetupConfig()
+
+	db, err := sql.Open("mysql", Config.User+":"+Config.Password+"@tcp("+Config.Host+")/"+Config.DbName)
+	checkErr(err)
+
+	mysql = db
+	initResourceFile()
+	initPreparedStatements()
+
 	CommandMap = make(map[string]*Command)
 	discord, err := discordgo.New("Bot " + Token)
 	checkErr(err)
@@ -36,44 +54,78 @@ func main() {
 
 	discord.AddHandler(messageCreate)
 
-	command := Command{
-		Aliases: []string{"-setuser"},
-		Execute: func(data CommandData) {
-			fmt.Println("You executed " + data.Label)
-			fmt.Println(data.toString())
-
+	registerCommand(&Command{
+		[]string{"-addresource"},
+		func(data CommandData) {
 			if isOwner(data.User) {
 				switch len(data.Arguments) {
 				case 0:
 				case 1:
-					data.sendMessage("-setuser [@mention] [role]")
+					data.sendMessage("-addresource [@mention] [resource/role]")
 					break
 				case 2:
-					//guild := getGuild(data.Session, data.GuildID)
 					mentions := data.Message.Mentions
 
 					guildMember, err := data.Session.GuildMember(data.GuildID, mentions[0].ID)
 					checkErr(err)
-					hasRole := hasRole(guildMember, data.Arguments[1])
 					guild := getGuild(data.Session, data.GuildID)
-					if !hasRole {
-						role := getRole(guild, data.Arguments[1])
-						err := data.Session.GuildMemberRoleAdd(guild.ID, data.User.ID, role.ID)
-						checkErr(err)
-						data.sendMessage()
-					} else {
-						data.sendMessage("You have set %s's ")
+					role := getRole(guild, data.Arguments[1])
+					if role == nil {
+						data.sendMessage("Unable to add role %[1]s to %[2]s because that role doesn't exist!", data.Arguments[1], guildMember.Mention())
+						return
 					}
-
+					hasRole := hasRole(guildMember, role.ID)
+					if !hasRole {
+						err := data.Session.GuildMemberRoleAdd(guild.ID, guildMember.User.ID, role.ID)
+						if err != nil {
+							data.sendMessage("An error occured report this to LockedThread now!")
+						} else {
+							data.sendMessage("You have added the resource %[1]s to %[2]s.", role.Name, guildMember.Mention())
+						}
+					} else {
+						data.sendMessage("%s already has that role but we will update their resource list in the database.", guildMember.Mention())
+					}
 					break
 				}
 			} else {
-
+				data.sendNoPermission()
 			}
+		},
+	})
 
-		}}
-
-	registerCommand(command.Aliases, &command)
+	registerCommand(&Command{
+		[]string{"-createresource"},
+		func(data CommandData) {
+			if isOwner(data.User) {
+				switch len(data.Arguments) {
+				case 0:
+					data.sendMessage("-createresource [resource/rolename]")
+					break
+				case 1:
+					guild := getGuild(data.Session, data.GuildID)
+					role := getRole(guild, data.Arguments[0])
+					if role == nil {
+						role, err = data.Session.GuildRoleCreate(guild.ID)
+						checkErr(err)
+						role, err = data.Session.GuildRoleEdit(guild.ID, role.ID, data.Arguments[0], 0xdb7c23, role.Hoist, 3263553, false)
+						checkErr(err)
+						data.sendMessage("Create role & resource with name %s", role.Name)
+					} else {
+						data.sendMessage("Resource already found with name %s", role.Name)
+					}
+					resource := findResource(role.Name)
+					if resource == nil {
+						AvailableResources = append(AvailableResources, Resource{
+							RoleID:   role.ID,
+							RoleName: role.Name,
+						})
+					}
+				}
+			} else {
+				data.sendNoPermission()
+			}
+		},
+	})
 
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
@@ -81,6 +133,37 @@ func main() {
 	<-sc
 
 	_ = discord.Close()
+	saveResourceFile()
+}
+
+func initPreparedStatements() {
+
+}
+
+func initResourceFile() []Resource {
+	jsonFile, err := os.Open("resources.json")
+	if err != nil {
+		_, err = os.Create("resources.json")
+		checkErr(err)
+		return []Resource{}
+	}
+	fmt.Println("Successfully opened resources.json")
+	defer jsonFile.Close()
+
+	var resources []Resource
+
+	bytes, err := ioutil.ReadAll(jsonFile)
+	checkErr(err)
+	err = json.Unmarshal(bytes, &resources)
+	checkErr(err)
+	return resources
+}
+
+func saveResourceFile() {
+	bytes, err := json.Marshal(&AvailableResources)
+	checkErr(err)
+	err = ioutil.WriteFile("resources.json", bytes, os.ModeAppend)
+	checkErr(err)
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
@@ -113,9 +196,9 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 }
 
-func registerCommand(aliases []string, command *Command) {
-	for aliasIndex := range aliases {
-		CommandMap[strings.ToLower(aliases[aliasIndex])] = command
+func registerCommand(command *Command) {
+	for aliasIndex := range command.Aliases {
+		CommandMap[strings.ToLower(command.Aliases[aliasIndex])] = command
 	}
 }
 

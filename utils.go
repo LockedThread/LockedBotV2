@@ -46,10 +46,13 @@ func isOwner(user *discordgo.User) bool {
 	return user.ID == OWNER
 }
 
-func hasRole(member *discordgo.Member, roleString string) bool {
+func hasRole(member *discordgo.Member, roleId string) bool {
+	println("roleId=", roleId)
 	for roleIndex := range member.Roles {
 		role := member.Roles[roleIndex]
-		if strings.ToLower(role) == roleString {
+		println("roleIndex=", roleIndex)
+		println("role=", role)
+		if role == roleId {
 			return true
 		}
 	}

@@ -24,12 +24,12 @@ type CommandData struct {
 	Channel   *discordgo.Channel
 }
 
-func (data CommandData) toString() string {
+func (data CommandData) String() string {
 	return fmt.Sprintf("[%s, %s, %s, %s, %s, %s]", data.Label, data.GuildID, data.Arguments, data.Session, data.User.String(), data.Channel)
 }
 
 func (data CommandData) sendMessage(message string, a ...interface{}) *discordgo.Message {
-	message = fmt.Sprintf(message, a)
+	message = fmt.Sprintf(message, a...)
 	if len(message) <= 2000 {
 		send, err := data.Session.ChannelMessageSend(data.Channel.ID, message)
 		checkErr(err)
@@ -46,4 +46,8 @@ func (data CommandData) sendMessage(message string, a ...interface{}) *discordgo
 
 		return messageInstance
 	}
+}
+
+func (data CommandData) sendNoPermission() {
+	data.sendMessage("You don't have permission to execute this command!")
 }
