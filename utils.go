@@ -91,3 +91,12 @@ func registerCommand(command *Command) {
 func findCommand(label string) *Command {
 	return CommandMap[strings.ToLower(label)]
 }
+
+func getResources(user *discordgo.User) (resources []string) {
+	var resourceString string
+	err := StmtFindResourceColumn.QueryRow(user.ID).Scan(&resourceString)
+	checkErr(err)
+	err = json.Unmarshal([]byte(resourceString), &resources)
+	checkErr(err)
+	return resources
+}

@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"strings"
@@ -16,17 +15,19 @@ import (
 import _ "github.com/go-sql-driver/mysql"
 
 var (
-	MySQL              *sql.DB = nil
-	Token              string
-	CommandMap         map[string]*Command
-	UserMap            map[string]*User
-	Config             *Configuration
-	AvailableResources []Resource
+	MySQL      *sql.DB = nil
+	Token      string
+	CommandMap map[string]*Command
+	UserMap    map[string]*User
+	Config     *Configuration
 
-	StmtInsertResource *sql.Stmt
-	StmtFindResource   *sql.Stmt
-	StmtInsertUser     *sql.Stmt
-	StmtFindUser       *sql.Stmt
+	StmtInsertResourceRow  *sql.Stmt
+	StmtFindResourceRow    *sql.Stmt
+	StmtFindResourceColumn *sql.Stmt
+
+	StmtUpdateUserResourceColumn *sql.Stmt
+	StmtInsertUserRow            *sql.Stmt
+	StmtFindUserRow              *sql.Stmt
 )
 
 func init() {
@@ -114,20 +115,12 @@ func main() {
 					} else {
 						data.sendMessage("Resource already found with name %s", role.Name)
 					}
-					resource := findResource(role.Name)
-					if resource == nil {
-						resource = &Resource{
-							RoleID:   role.ID,
-							RoleName: role.Name,
-						}
-						AvailableResources = append(AvailableResources, *resource)
-					}
-					rows, err := StmtFindResource.Query(resource.RoleName)
+					rows, err := StmtFindResourceRow.Query(role.Name)
 					checkErr(err)
 
 					next := rows.Next()
 					if next == false {
-						_, err := StmtInsertResource.Exec(resource.RoleName, "")
+						_, err := StmtInsertResourceRow.Exec(role.Name, "")
 						checkErr(err)
 					}
 					err = rows.Close()
@@ -153,14 +146,14 @@ func main() {
 					if len(mentions) == 1 {
 						mentionedUser := mentions[0]
 
-						rows, err := StmtFindUser.Query(mentionedUser.ID)
+						rows, err := StmtFindUserRow.Query(mentionedUser.ID)
 						checkErr(err)
 
 						next := rows.Next()
 						if next {
 							data.sendMessage("Unable to create client for %s because that client already exists in the database!", mentionedUser.Mention())
 						} else {
-							_, err := StmtInsertUser.Exec(data.Arguments[1], mentionedUser.ID, "", "")
+							_, err := StmtInsertUserRow.Exec(data.Arguments[1], mentionedUser.ID, "", "")
 							checkErr(err)
 							data.sendMessage("Created client for %s.", mentionedUser.Mention())
 						}
@@ -178,54 +171,77 @@ func main() {
 		},
 	})
 
+	registerCommand(&Command{
+		[]string{"-addresource"},
+		func(data CommandData) {
+			if isOwner(data.User) {
+				switch len(data.Arguments) {
+				case 0:
+				case 1:
+					data.sendMessage("Incorrect Syntax. Please do -addresource [@mention] [resource]")
+					break
+				case 2:
+					mentions := data.Message.Mentions
+					if len(mentions) == 1 {
+						mentionedUser := mentions[0]
+						resources := getResources(mentionedUser)
+						for e := range resources {
+							if strings.ToLower(resources[e]) == strings.ToLower(data.Arguments[1]) {
+								data.sendMessage("That resource is already found for %s", mentionedUser.Mention())
+								return
+							}
+						}
+
+						resources = append(resources, data.Arguments[1])
+
+						bytes, err := json.Marshal(resources)
+						checkErr(err)
+						_, err = StmtUpdateUserResourceColumn.Exec(string(bytes), mentionedUser.ID)
+						checkErr(err)
+
+						data.sendMessage("Added resource to %s", mentionedUser.Mention())
+					} else {
+						data.sendMessage("Incorrect Syntax. Please do -addresource [@mention] [resource]")
+					}
+				}
+			} else {
+				data.sendNoPermission()
+			}
+		},
+	})
+
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
 	<-sc
 	_ = MySQL.Close()
 	_ = discord.Close()
-	saveResourceFile()
 }
 
 func initPreparedStatements() {
 	stmt, err := MySQL.Prepare("INSERT INTO " + Config.Tables.ResourcesTable + " (resource_name, response_data) VALUES(?,?)")
 	checkErr(err)
-	StmtInsertResource = stmt
+	StmtInsertResourceRow = stmt
+
 	stmt, err = MySQL.Prepare("SELECT * FROM " + Config.Tables.ResourcesTable + " WHERE resource_name = ?")
 	checkErr(err)
-	StmtFindResource = stmt
+	StmtFindResourceRow = stmt
+
+	stmt, err = MySQL.Prepare("SELECT resources FROM " + Config.Tables.UserTable + " WHERE discord_id = ?")
+	checkErr(err)
+	StmtFindResourceColumn = stmt
+
 	stmt, err = MySQL.Prepare("INSERT INTO " + Config.Tables.UserTable + " (token, discord_id, resources, ip_addresses) VALUES(?,?,?,?)")
 	checkErr(err)
-	StmtInsertUser = stmt
+	StmtInsertUserRow = stmt
+
 	stmt, err = MySQL.Prepare("SELECT * FROM " + Config.Tables.UserTable + " WHERE discord_id = ?")
 	checkErr(err)
-	StmtFindUser = stmt
-}
+	StmtFindUserRow = stmt
 
-func initResourceFile() []Resource {
-	jsonFile, err := os.Open("resources.json")
-	if err != nil {
-		_, err = os.Create("resources.json")
-		checkErr(err)
-		return []Resource{}
-	}
-	fmt.Println("Successfully opened resources.json")
-	defer jsonFile.Close()
-
-	var resources []Resource
-
-	bytes, err := ioutil.ReadAll(jsonFile)
+	stmt, err = MySQL.Prepare("UPDATE " + Config.Tables.UserTable + " SET resources = ? WHERE discord_id = ?")
 	checkErr(err)
-	err = json.Unmarshal(bytes, &resources)
-	checkErr(err)
-	return resources
-}
-
-func saveResourceFile() {
-	bytes, err := getPrettyPrinted(&AvailableResources)
-	checkErr(err)
-	err = ioutil.WriteFile("resources.json", bytes, os.ModeAppend)
-	checkErr(err)
+	StmtUpdateUserResourceColumn = stmt
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
