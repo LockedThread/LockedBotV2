@@ -184,15 +184,22 @@ func main() {
 					mentions := data.Message.Mentions
 					if len(mentions) == 1 {
 						mentionedUser := mentions[0]
-						resources := getResources(mentionedUser)
-						for e := range resources {
-							if strings.ToLower(resources[e]) == strings.ToLower(data.Arguments[1]) {
-								data.sendMessage("That resource is already found for %s", mentionedUser.Mention())
-								return
+						var resources []string
+						if data.Arguments[1] == "*" {
+							resources = []string{"*"}
+						} else {
+							resources = getResources(mentionedUser)
+							for e := range resources {
+								if resources[e] == "*" {
+									data.sendMessage("That client has a resource wildcard, no point in adding a resource!")
+									return
+								} else if strings.ToLower(resources[e]) == strings.ToLower(data.Arguments[1]) {
+									data.sendMessage("That resource is already found for %s", mentionedUser.Mention())
+									return
+								}
 							}
+							resources = append(resources, data.Arguments[1])
 						}
-
-						resources = append(resources, data.Arguments[1])
 
 						bytes, err := json.Marshal(resources)
 						checkErr(err)
