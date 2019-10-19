@@ -156,7 +156,7 @@ func initResourceFile() []Resource {
 }
 
 func saveResourceFile() {
-	bytes, err := json.Marshal(&AvailableResources)
+	bytes, err := getPrettyPrinted(&AvailableResources)
 	checkErr(err)
 	err = ioutil.WriteFile("resources.json", bytes, os.ModeAppend)
 	checkErr(err)
@@ -190,14 +190,4 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			Session:   s,
 		})
 	}
-}
-
-func registerCommand(command *Command) {
-	for aliasIndex := range command.Aliases {
-		CommandMap[strings.ToLower(command.Aliases[aliasIndex])] = command
-	}
-}
-
-func findCommand(label string) *Command {
-	return CommandMap[strings.ToLower(label)]
 }

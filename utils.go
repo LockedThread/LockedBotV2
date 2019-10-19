@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"github.com/bwmarrin/discordgo"
 	"log"
 	"strings"
@@ -67,4 +68,26 @@ func getRole(guild *discordgo.Guild, roleString string) *discordgo.Role {
 		}
 	}
 	return nil
+}
+
+func getPrettyPrinted(data interface{}) ([]byte, error) {
+	buffer := new(bytes.Buffer)
+	encoder := json.NewEncoder(buffer)
+	encoder.SetIndent(TEXT_EMPTY, TEXT_INDENT)
+
+	err := encoder.Encode(data)
+	if err != nil {
+		return TEXT_EMPTY, err
+	}
+	return buffer.Bytes(), nil
+}
+
+func registerCommand(command *Command) {
+	for aliasIndex := range command.Aliases {
+		CommandMap[strings.ToLower(command.Aliases[aliasIndex])] = command
+	}
+}
+
+func findCommand(label string) *Command {
+	return CommandMap[strings.ToLower(label)]
 }
