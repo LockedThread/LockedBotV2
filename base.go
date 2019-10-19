@@ -18,7 +18,7 @@ type Resource struct {
 func findResource(name string) *Resource {
 	for resourceIndex := range AvailableResources {
 		resource := AvailableResources[resourceIndex]
-		if strings.ToLower(resource.RoleName) == name {
+		if strings.ToLower(resource.RoleName) == strings.ToLower(name) {
 			return &resource
 		}
 	}
