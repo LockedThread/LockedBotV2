@@ -22,6 +22,9 @@ var (
 	UserMap            map[string]*User
 	Config             *Configuration
 	AvailableResources []Resource
+
+	StmtInsertResource *sql.Stmt
+	StmtFindResource   *sql.Stmt
 )
 
 func init() {
@@ -111,11 +114,22 @@ func main() {
 					}
 					resource := findResource(role.Name)
 					if resource == nil {
-						AvailableResources = append(AvailableResources, Resource{
+						resource = &Resource{
 							RoleID:   role.ID,
 							RoleName: role.Name,
-						})
+						}
+						AvailableResources = append(AvailableResources, *resource)
 					}
+					rows, err := StmtFindResource.Query(resource.RoleName)
+					checkErr(err)
+
+					next := rows.Next()
+					if next == false {
+						_, err := StmtInsertResource.Exec(resource.RoleName, "")
+						checkErr(err)
+					}
+					err = rows.Close()
+					checkErr(err)
 				}
 			} else {
 				data.sendNoPermission()
@@ -133,7 +147,12 @@ func main() {
 }
 
 func initPreparedStatements() {
-
+	stmt, err := MySQL.Prepare("INSERT INTO resources (resource_name, response_data) VALUES(?,?)")
+	checkErr(err)
+	StmtInsertResource = stmt
+	stmt, err = MySQL.Prepare("SELECT * FROM resources WHERE resource_name = ?")
+	checkErr(err)
+	StmtFindResource = stmt
 }
 
 func initResourceFile() []Resource {
