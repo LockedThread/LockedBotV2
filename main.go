@@ -25,6 +25,8 @@ var (
 
 	StmtInsertResource *sql.Stmt
 	StmtFindResource   *sql.Stmt
+	StmtInsertUser     *sql.Stmt
+	StmtFindUser       *sql.Stmt
 )
 
 func init() {
@@ -60,7 +62,7 @@ func main() {
 				switch len(data.Arguments) {
 				case 0:
 				case 1:
-					data.sendMessage("-addresource [@mention] [resource/role]")
+					data.sendMessage("Incorrect Syntax. Please do -addresource [@mention] [resource/role]")
 					break
 				case 2:
 					mentions := data.Message.Mentions
@@ -98,7 +100,7 @@ func main() {
 			if isOwner(data.User) {
 				switch len(data.Arguments) {
 				case 0:
-					data.sendMessage("-createresource [resource/rolename]")
+					data.sendMessage("Incorrect Syntax. Please do -createresource [resource/rolename]")
 					break
 				case 1:
 					guild := getGuild(data.Session, data.GuildID)
@@ -137,6 +139,45 @@ func main() {
 		},
 	})
 
+	registerCommand(&Command{
+		[]string{"-createclient"},
+		func(data CommandData) {
+			if isOwner(data.User) {
+				switch len(data.Arguments) {
+				case 0:
+				case 1:
+					data.sendMessage("Incorrect Syntax. Please do -createclient [@mention] [token]")
+					break
+				case 2:
+					mentions := data.Message.Mentions
+					if len(mentions) == 1 {
+						mentionedUser := mentions[0]
+
+						rows, err := StmtFindUser.Query(mentionedUser.ID)
+						checkErr(err)
+
+						next := rows.Next()
+						if next {
+							data.sendMessage("Unable to create client for %s because that client already exists in the database!", mentionedUser.Mention())
+						} else {
+							_, err := StmtInsertUser.Exec(data.Arguments[1], mentionedUser.ID, "", "")
+							checkErr(err)
+							data.sendMessage("Created client for %s.", mentionedUser.Mention())
+						}
+						err = rows.Close()
+						checkErr(err)
+
+					} else {
+						data.sendMessage("Incorrect Syntax. Please do -createuser [@mention] [token]")
+					}
+					break
+				}
+			} else {
+				data.sendNoPermission()
+			}
+		},
+	})
+
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
 	signal.Notify(sc, syscall.SIGINT, syscall.SIGTERM, os.Interrupt, os.Kill)
@@ -153,6 +194,12 @@ func initPreparedStatements() {
 	stmt, err = MySQL.Prepare("SELECT * FROM " + Config.Tables.ResourcesTable + " WHERE resource_name = ?")
 	checkErr(err)
 	StmtFindResource = stmt
+	stmt, err = MySQL.Prepare("INSERT INTO " + Config.Tables.UserTable + " (token, discord_id, resources, ip_addresses) VALUES(?,?,?,?)")
+	checkErr(err)
+	StmtInsertUser = stmt
+	stmt, err = MySQL.Prepare("SELECT * FROM " + Config.Tables.UserTable + " WHERE discord_id = ?")
+	checkErr(err)
+	StmtFindUser = stmt
 }
 
 func initResourceFile() []Resource {
