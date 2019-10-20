@@ -149,6 +149,7 @@ func main() {
 					}
 					err = rows.Close()
 					checkErr(err)
+					break
 				}
 			} else {
 				data.sendNoPermission()
@@ -194,52 +195,6 @@ func main() {
 			}
 		},
 	})
-
-	/*registerCommand(&Command{
-		[]string{"-addresource"},
-		func(data CommandData) {
-			if isOwner(data.User) {
-				switch len(data.Arguments) {
-				case 0:
-				case 1:
-					data.sendMessage("Incorrect Syntax. Please do -addresource [@mention] [resource]")
-					break
-				case 2:
-					mentions := data.Message.Mentions
-					if len(mentions) == 1 {
-						mentionedUser := mentions[0]
-						var resources []string
-						if data.Arguments[1] == "*" {
-							resources = []string{"*"}
-						} else {
-							resources = getResources(mentionedUser)
-							for e := range resources {
-								if resources[e] == "*" {
-									data.sendMessage("That client has a resource wildcard, no point in adding a resource!")
-									return
-								} else if strings.ToLower(resources[e]) == strings.ToLower(data.Arguments[1]) {
-									data.sendMessage("That resource is already found for %s", mentionedUser.Mention())
-									return
-								}
-							}
-							resources = append(resources, data.Arguments[1])
-						}
-
-						bytes, err := json.Marshal(resources)
-						checkErr(err)
-						_, err = StmtUpdateUserResourceColumn.Exec(string(bytes), mentionedUser.ID)
-						checkErr(err)
-
-						data.sendMessage("Added resource to %s", mentionedUser.Mention())
-					} else {
-						data.sendMessage("Incorrect Syntax. Please do -addresource [@mention] [resource]")
-					}
-				}
-			} else {
-				data.sendNoPermission()
-			}
-		},
-	})*/
 
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
