@@ -96,7 +96,11 @@ func getResources(user *discordgo.User) (resources []string) {
 	var resourceString string
 	err := StmtFindResourceColumn.QueryRow(user.ID).Scan(&resourceString)
 	checkErr(err)
-	err = json.Unmarshal([]byte(resourceString), &resources)
-	checkErr(err)
+	if len(resourceString) == 0 {
+		return resources
+	} else {
+		err = json.Unmarshal([]byte(resourceString), &resources)
+		checkErr(err)
+	}
 	return resources
 }

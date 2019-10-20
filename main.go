@@ -42,7 +42,6 @@ func main() {
 	checkErr(err)
 
 	MySQL = db
-	initResourceFile()
 	initPreparedStatements()
 
 	CommandMap = make(map[string]*Command)
@@ -70,23 +69,48 @@ func main() {
 
 					guildMember, err := data.Session.GuildMember(data.GuildID, mentions[0].ID)
 					checkErr(err)
-					guild := getGuild(data.Session, data.GuildID)
-					role := getRole(guild, data.Arguments[1])
-					if role == nil {
-						data.sendMessage("Unable to add role %[1]s to %[2]s because that role doesn't exist!", data.Arguments[1], guildMember.Mention())
-						return
-					}
-					hasRole := hasRole(guildMember, role.ID)
-					if !hasRole {
-						err := data.Session.GuildMemberRoleAdd(guild.ID, guildMember.User.ID, role.ID)
-						if err != nil {
-							data.sendMessage("An error occured report this to LockedThread now!")
-						} else {
-							data.sendMessage("You have added the resource %[1]s to %[2]s.", role.Name, guildMember.Mention())
+					if data.Arguments[1] != "*" {
+						guild := getGuild(data.Session, data.GuildID)
+						role := getRole(guild, data.Arguments[1])
+						if role == nil {
+							data.sendMessage("Unable to add role %[1]s to %[2]s because that role doesn't exist!", data.Arguments[1], guildMember.Mention())
+							return
 						}
-					} else {
-						data.sendMessage("%s already has that role but we will update their resource list in the database.", guildMember.Mention())
+						hasRole := hasRole(guildMember, role.ID)
+						if !hasRole {
+							err := data.Session.GuildMemberRoleAdd(guild.ID, guildMember.User.ID, role.ID)
+							if err != nil {
+								data.sendMessage("An error occured report this to LockedThread now!")
+							} else {
+								data.sendMessage("You have added the resource %[1]s to %[2]s.", role.Name, guildMember.Mention())
+							}
+						} else {
+							data.sendMessage("%s already has that role but we will update their resource list in the database.", guildMember.Mention())
+						}
 					}
+					var resources []string
+					if data.Arguments[1] == "*" {
+						resources = []string{"*"}
+					} else {
+						resources = getResources(guildMember.User)
+						for e := range resources {
+							if resources[e] == "*" {
+								data.sendMessage("That client has a resource wildcard, no point in adding a resource!")
+								return
+							} else if strings.ToLower(resources[e]) == strings.ToLower(data.Arguments[1]) {
+								data.sendMessage("That resource is already found for %s in the database", guildMember.Mention())
+								return
+							}
+						}
+						resources = append(resources, data.Arguments[1])
+					}
+
+					bytes, err := json.Marshal(resources)
+					checkErr(err)
+					_, err = StmtUpdateUserResourceColumn.Exec(string(bytes), guildMember.User.ID)
+					checkErr(err)
+
+					data.sendMessage("Added resource to %s in the database", guildMember.Mention())
 					break
 				}
 			} else {
@@ -171,7 +195,7 @@ func main() {
 		},
 	})
 
-	registerCommand(&Command{
+	/*registerCommand(&Command{
 		[]string{"-addresource"},
 		func(data CommandData) {
 			if isOwner(data.User) {
@@ -215,7 +239,7 @@ func main() {
 				data.sendNoPermission()
 			}
 		},
-	})
+	})*/
 
 	fmt.Println("Bot is now running.  Press CTRL-C to exit.")
 	sc := make(chan os.Signal, 1)
