@@ -19,8 +19,8 @@ type Configuration struct {
 
 func (c *Configuration) SetupConfig() *Configuration {
 	yamlFile, err := ioutil.ReadFile("config.yml")
-	checkErr(err)
+	CheckErr(err)
 	err = yaml.Unmarshal(yamlFile, &c)
-	checkErr(err)
+	CheckErr(err)
 	return c
 }

@@ -24,23 +24,23 @@ type CommandData struct {
 	Channel   *discordgo.Channel
 }
 
-func (data CommandData) String() string {
-	return fmt.Sprintf("[%s, %s, %s, %s, %s, %s]", data.Label, data.GuildID, data.Arguments, data.Session, data.User.String(), data.Channel)
+func (cd CommandData) String() string {
+	return fmt.Sprintf("[%s, %s, %s, %s, %s, %s]", cd.Label, cd.GuildID, cd.Arguments, cd.Session, cd.User.String(), cd.Channel)
 }
 
-func (data CommandData) sendMessage(message string, a ...interface{}) *discordgo.Message {
+func (cd CommandData) SendMessage(message string, a ...interface{}) *discordgo.Message {
 	message = fmt.Sprintf(message, a...)
 	if len(message) <= 2000 {
-		send, err := data.Session.ChannelMessageSend(data.Channel.ID, message)
-		checkErr(err)
+		send, err := cd.Session.ChannelMessageSend(cd.Channel.ID, message)
+		CheckErr(err)
 		return send
 	} else {
 		var messageInstance *discordgo.Message
 
 		strings := SplitSubN(message, 2000)
 		for messageIndex := range strings {
-			send, err := data.Session.ChannelMessageSend(data.Channel.ID, strings[messageIndex])
-			checkErr(err)
+			send, err := cd.Session.ChannelMessageSend(cd.Channel.ID, strings[messageIndex])
+			CheckErr(err)
 			messageInstance = send
 		}
 
@@ -48,6 +48,6 @@ func (data CommandData) sendMessage(message string, a ...interface{}) *discordgo
 	}
 }
 
-func (data CommandData) sendNoPermission() {
-	data.sendMessage("You don't have permission to execute this command!")
+func (cd CommandData) SendNoPermission() {
+	cd.SendMessage("You don't have permission to execute this command!")
 }

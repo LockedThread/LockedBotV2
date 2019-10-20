@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func checkErr(err error) {
+func CheckErr(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func SplitSubN(s string, n int) []string {
 	return subs
 }
 
-func getGuild(session *discordgo.Session, guildID string) *discordgo.Guild {
+func GetGuild(session *discordgo.Session, guildID string) *discordgo.Guild {
 	guild, err := session.State.Guild(guildID)
 	if err != nil {
 		guild, err = session.Guild(guildID)
@@ -43,11 +43,11 @@ func getGuild(session *discordgo.Session, guildID string) *discordgo.Guild {
 	return guild
 }
 
-func isOwner(user *discordgo.User) bool {
-	return user.ID == OWNER
+func IsOwner(user *discordgo.User) bool {
+	return user.ID == Owner
 }
 
-func hasRole(member *discordgo.Member, roleId string) bool {
+func HasRole(member *discordgo.Member, roleId string) bool {
 	println("roleId=", roleId)
 	for roleIndex := range member.Roles {
 		role := member.Roles[roleIndex]
@@ -60,7 +60,7 @@ func hasRole(member *discordgo.Member, roleId string) bool {
 	return false
 }
 
-func getRole(guild *discordgo.Guild, roleString string) *discordgo.Role {
+func GetRole(guild *discordgo.Guild, roleString string) *discordgo.Role {
 	for roleIndex := range guild.Roles {
 		role := guild.Roles[roleIndex]
 		if strings.ToLower(role.Name) == strings.ToLower(roleString) {
@@ -70,37 +70,25 @@ func getRole(guild *discordgo.Guild, roleString string) *discordgo.Role {
 	return nil
 }
 
-func getPrettyPrinted(data interface{}) ([]byte, error) {
-	buffer := new(bytes.Buffer)
-	encoder := json.NewEncoder(buffer)
-	encoder.SetIndent(TEXT_EMPTY, TEXT_INDENT)
-
-	err := encoder.Encode(data)
-	if err != nil {
-		return []byte{}, err
-	}
-	return buffer.Bytes(), nil
-}
-
-func registerCommand(command *Command) {
+func RegisterCommand(command *Command) {
 	for aliasIndex := range command.Aliases {
-		CommandMap[strings.ToLower(command.Aliases[aliasIndex])] = command
+		commandMap[strings.ToLower(command.Aliases[aliasIndex])] = command
 	}
 }
 
-func findCommand(label string) *Command {
-	return CommandMap[strings.ToLower(label)]
+func FindCommand(label string) *Command {
+	return commandMap[strings.ToLower(label)]
 }
 
-func getResources(user *discordgo.User) (resources []string) {
+func GetResources(user *discordgo.User) (resources []string) {
 	var resourceString string
-	err := StmtFindResourceColumn.QueryRow(user.ID).Scan(&resourceString)
-	checkErr(err)
+	err := stmtFindResourceColumn.QueryRow(user.ID).Scan(&resourceString)
+	CheckErr(err)
 	if len(resourceString) == 0 {
 		return resources
 	} else {
 		err = json.Unmarshal([]byte(resourceString), &resources)
-		checkErr(err)
+		CheckErr(err)
 	}
 	return resources
 }
