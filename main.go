@@ -60,7 +60,6 @@ func main() {
 
 			data.SendEmbed(NewEmbed().
 				SetTitle("Help for LockedBot V2").
-				SetFooter("Bot by LockedThread#5691").
 				SetDescription("-new | creates a ticket\n-clientinfo {@mention} | dms you information about a client\n-prices | dms you prices on all of our products & services").
 				SetColor(Green))
 		},
@@ -75,7 +74,6 @@ func main() {
 				case 1:
 					data.SendEmbed(NewEmbed().
 						SetTitle("Incorrect Syntax").
-						SetFooter("Bot by LockedThread#5691").
 						SetDescription("Incorrect Syntax. Please do -addresource [@mention] [resource/role]").
 						SetColor(Red))
 					break
@@ -142,7 +140,6 @@ func main() {
 				case 0:
 					data.SendEmbed(NewEmbed().
 						SetTitle("Incorrect Syntax").
-						SetFooter("Bot by LockedThread#5691").
 						SetDescription("Incorrect Syntax. Please do -createresource [resource/rolename]").
 						SetColor(Red))
 					break
@@ -185,7 +182,6 @@ func main() {
 				case 1:
 					data.SendEmbed(NewEmbed().
 						SetTitle("Incorrect Syntax").
-						SetFooter("Bot by LockedThread#5691").
 						SetDescription("Incorrect Syntax. Please do -createclient [@mention] [token]").
 						SetColor(Red))
 					break
@@ -211,7 +207,6 @@ func main() {
 					} else {
 						data.SendEmbed(NewEmbed().
 							SetTitle("Incorrect Syntax").
-							SetFooter("Bot by LockedThread#5691").
 							SetDescription("Incorrect Syntax. Please do -createclient [@mention] [token]").
 							SetColor(Red))
 					}

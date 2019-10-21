@@ -57,7 +57,7 @@ func (cd CommandData) SendMessage(message string, a ...interface{}) *discordgo.M
 }
 
 func (cd CommandData) SendEmbed(embed *Embed) *discordgo.Message {
-	message, err := cd.Session.ChannelMessageSendEmbed(cd.Channel.ID, embed.MessageEmbed)
+	message, err := cd.Session.ChannelMessageSendEmbed(cd.Channel.ID, embed.SetFooter("Bot by LockedThread#5691").MessageEmbed)
 	CheckErr(err)
 	return message
 }
