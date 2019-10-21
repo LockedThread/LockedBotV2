@@ -55,6 +55,18 @@ func main() {
 	discord.AddHandler(messageCreate)
 
 	RegisterCommand(&Command{
+		Aliases: []string{"-help"},
+		Execute: func(data CommandData) {
+
+			data.SendEmbed(NewEmbed().
+				SetTitle("Help for LockedBot V2").
+				SetFooter("Bot by LockedThread#5691").
+				SetDescription("-new | creates a ticket\n-clientinfo {@mention} | dms you information about a client\n-prices | dms you prices on all of our products & services").
+				SetColor(Green))
+		},
+	})
+
+	RegisterCommand(&Command{
 		[]string{"-addresource"},
 		func(data CommandData) {
 			if IsOwner(data.User) {
