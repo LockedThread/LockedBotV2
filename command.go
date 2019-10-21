@@ -48,6 +48,12 @@ func (cd CommandData) SendMessage(message string, a ...interface{}) *discordgo.M
 	}
 }
 
+func (cd CommandData) SendEmbed(embed *Embed) *discordgo.Message {
+	message, err := cd.Session.ChannelMessageSendEmbed(cd.Channel.ID, embed.MessageEmbed)
+	CheckErr(err)
+	return message
+}
+
 func (cd CommandData) SendNoPermission() {
 	cd.SendMessage("You don't have permission to execute this command!")
 }
