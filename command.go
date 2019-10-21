@@ -5,6 +5,14 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+var (
+	NoPermissionEmbed = NewEmbed().
+		SetTitle("No Permission").
+		SetFooter("Bot by LockedThread#5691").
+		SetDescription("You don't have permission to do this command.").
+		SetColor(Red)
+)
+
 type Command struct {
 	Aliases []string
 	Execute func(data CommandData)
@@ -55,5 +63,5 @@ func (cd CommandData) SendEmbed(embed *Embed) *discordgo.Message {
 }
 
 func (cd CommandData) SendNoPermission() {
-	cd.SendMessage("You don't have permission to execute this command!")
+	cd.SendEmbed(NoPermissionEmbed)
 }

@@ -73,7 +73,11 @@ func main() {
 				switch len(data.Arguments) {
 				case 0:
 				case 1:
-					data.SendMessage("Incorrect Syntax. Please do -addresource [@mention] [resource/role]")
+					data.SendEmbed(NewEmbed().
+						SetTitle("Incorrect Syntax").
+						SetFooter("Bot by LockedThread#5691").
+						SetDescription("Incorrect Syntax. Please do -addresource [@mention] [resource/role]").
+						SetColor(Red))
 					break
 				case 2:
 					mentions := data.Message.Mentions
@@ -136,7 +140,11 @@ func main() {
 			if IsOwner(data.User) {
 				switch len(data.Arguments) {
 				case 0:
-					data.SendMessage("Incorrect Syntax. Please do -createresource [resource/rolename]")
+					data.SendEmbed(NewEmbed().
+						SetTitle("Incorrect Syntax").
+						SetFooter("Bot by LockedThread#5691").
+						SetDescription("Incorrect Syntax. Please do -createresource [resource/rolename]").
+						SetColor(Red))
 					break
 				case 1:
 					guild := GetGuild(data.Session, data.GuildID)
@@ -175,7 +183,11 @@ func main() {
 				switch len(data.Arguments) {
 				case 0:
 				case 1:
-					data.SendMessage("Incorrect Syntax. Please do -createclient [@mention] [token]")
+					data.SendEmbed(NewEmbed().
+						SetTitle("Incorrect Syntax").
+						SetFooter("Bot by LockedThread#5691").
+						SetDescription("Incorrect Syntax. Please do -createclient [@mention] [token]").
+						SetColor(Red))
 					break
 				case 2:
 					mentions := data.Message.Mentions
@@ -197,7 +209,11 @@ func main() {
 						CheckErr(err)
 
 					} else {
-						data.SendMessage("Incorrect Syntax. Please do -createclient [@mention] [token]")
+						data.SendEmbed(NewEmbed().
+							SetTitle("Incorrect Syntax").
+							SetFooter("Bot by LockedThread#5691").
+							SetDescription("Incorrect Syntax. Please do -createclient [@mention] [token]").
+							SetColor(Red))
 					}
 					break
 				}
