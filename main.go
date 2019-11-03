@@ -27,6 +27,7 @@ var (
 	stmtFindResourceColumn *sql.Stmt
 	stmtUpdateResourceName *sql.Stmt
 	stmtGetAllResources    *sql.Stmt
+	stmtDeleteResource     *sql.Stmt
 
 	stmtUpdateUserResourceColumn *sql.Stmt
 	stmtInsertUserRow            *sql.Stmt
@@ -60,6 +61,69 @@ func main() {
 	discord.AddHandler(messageCreate)
 
 	RegisterCommand(&Command{
+		[]string{"-help"},
+		func(data CommandData) {
+
+			description :=
+				//"-prices | dms you prices on all of our products & services\n" +
+				"*-addresource {@mention} {resource} | Adds resource to client for the auth system\n" +
+					"*-createresource {name} | Creates resource for the auth system\n" +
+					"*-createclient {@mention} {token} | Creates client in database\n" +
+					"*-update {resource} {changelog} | Updates a resource with a changelog message\n" +
+					"*-rename {resource} {new name} | Changes the name of a resource\n" +
+					"*-setupdatechannel {resource} {channel} | Sets the update channel for a resource\n" +
+					"*-deleteresource {resource} | Deletes that resource\n" +
+					"-listresources | Shows you all of our resources\n" +
+					"-addip {ip-address} | Adds ip to your whitelisted ip addresses\n" +
+					"-setupclient {token} | Sets up your client data in the database\n" +
+					"-clientinfo {@mention} | Displays all information about a client\n\n" +
+					"All commands annotated by * are admin only!"
+
+			data.SendEmbed(NewEmbed().
+				SetTitle("Help for LockedBot V2").
+				SetDescription(description).
+				SetColor(Green))
+		},
+	})
+
+	RegisterCommand(&Command{
+		Aliases: []string{"-deleteresource"},
+		Execute: func(data CommandData) {
+			if IsOwner(data.User) {
+				if len(data.Arguments) == 1 {
+					result, err := stmtDeleteResource.Exec(data.Arguments[0])
+					if err != nil {
+						data.SendEmbed(NewEmbed().
+							SetTitle("ERROR").
+							SetDescription("There was some type of SQL error. (%s)", err.Error()).
+							SetColor(Red))
+					} else {
+						rowsAffected, _ := result.RowsAffected()
+						if rowsAffected == 0 {
+							data.SendEmbed(NewEmbed().
+								SetTitle("ERROR").
+								SetDescription("There was no resources found with %s to delete", data.Arguments[0]).
+								SetColor(Red))
+						} else {
+							data.SendEmbed(NewEmbed().
+								SetTitle("SUCCESS").
+								SetDescription("Successfully removed %s resource", data.Arguments[0]).
+								SetColor(Green))
+						}
+					}
+				} else {
+					data.SendEmbed(NewEmbed().
+						SetTitle("Incorrect Syntax").
+						SetDescription("Incorrect Syntax. Please do -deleteresource {resource}").
+						SetColor(Red))
+				}
+			} else {
+				data.SendNoPermission()
+			}
+		},
+	})
+
+	RegisterCommand(&Command{
 		[]string{"-setupclient"},
 		func(data CommandData) {
 
@@ -67,7 +131,7 @@ func main() {
 			case 0:
 				data.SendEmbed(NewEmbed().
 					SetTitle("Incorrect Syntax").
-					SetDescription("Incorrect Syntax. Please do -setupclient [token]").
+					SetDescription("Incorrect Syntax. Please do -setupclient {token}").
 					SetColor(Red))
 				break
 			case 1:
@@ -168,41 +232,25 @@ func main() {
 	})
 
 	RegisterCommand(&Command{
-		[]string{"-help"},
-		func(data CommandData) {
-
-			description :=
-				//"-prices | dms you prices on all of our products & services\n" +
-				"*-addresource {@mention} {resource} | Adds resource to client for the auth system\n" +
-					"*-createresource {name} | Creates resource for the auth system\n" +
-					"*-createclient {@mention} {token} | Creates client in database\n" +
-					"*-update {resource} {changelog} | Updates a resource with a changelog message\n" +
-					"*-rename {resource} {new name} | Changes the name of a resource\n" +
-					"*-setupdatechannel {resource} {channel} | Sets the update channel for a resource\n" +
-					"-listresources | Shows you all of our resources\n" +
-					"-addip {ip-address} | Adds ip to your whitelisted ip addresses\n" +
-					"-setupclient {token} | Sets up your client data in the database\n" +
-					"-clientinfo {@mention} | Displays all information about a client\n\n" +
-					"All commands annotated by * are admin only!"
-
-			data.SendEmbed(NewEmbed().
-				SetTitle("Help for LockedBot V2").
-				SetDescription(description).
-				SetColor(Green))
-		},
-	})
-
-	RegisterCommand(&Command{
 		[]string{"-listresources"},
 		func(data CommandData) {
 			resources := GetAllResources()
-			resourceNameArray := make([]string, len(resources))
-			for e := range resources {
-				resourceNameArray[e] = resources[e].Name
+
+			var description string
+
+			if len(resources) == 0 {
+				description = "**None**"
+			} else {
+				resourceNameArray := make([]string, len(resources))
+				for e := range resources {
+					resourceNameArray[e] = resources[e].Name
+				}
+				description = JoinArray(resourceNameArray)
 			}
+
 			data.SendEmbed(NewEmbed().
 				SetTitle("Resources").
-				SetDescription(JoinArray(resourceNameArray)).
+				SetDescription(description).
 				SetColor(Yellow))
 		},
 	})
@@ -210,37 +258,43 @@ func main() {
 	RegisterCommand(&Command{
 		[]string{"-rename"},
 		func(data CommandData) {
-			switch len(data.Arguments) {
-			case 0:
-			case 1:
-				data.SendEmbed(NewEmbed().
-					SetTitle("Incorrect Syntax").
-					SetDescription("Incorrect Syntax. Please do -rename {resource} {new name}").
-					SetColor(Red))
-				break
-			default:
-				resourceString := data.Arguments[0]
-				resource, err := GetResource(resourceString)
-				if err != nil {
+			if IsOwner(data.User) {
+				switch len(data.Arguments) {
+				case 0:
+				case 1:
 					data.SendEmbed(NewEmbed().
-						SetTitle("ERROR").
-						SetDescription("Unable to find resource with name %s", resourceString).
+						SetTitle("Incorrect Syntax").
+						SetDescription("Incorrect Syntax. Please do -rename {resource} {new name}").
 						SetColor(Red))
-				} else {
-					_, err := stmtUpdateResourceName.Exec(data.Arguments[1], resource.Name)
+					break
+				default:
+					resourceString := data.Arguments[0]
+					resource, err := GetResource(resourceString)
 					if err != nil {
 						data.SendEmbed(NewEmbed().
 							SetTitle("ERROR").
-							SetDescription("There was a SQL error, this shouldn't be happening message LockedThread").
+							SetDescription("Unable to find resource with name %s", resourceString).
 							SetColor(Red))
 					} else {
-						data.SendEmbed(NewEmbed().
-							SetTitle("SUCCESS").
-							SetDescription("Successfully changed resource %s to %s ", resource.Name, data.Arguments[1]).
-							SetColor(Green))
+						_, err := stmtUpdateResourceName.Exec(data.Arguments[1], resource.Name)
+						if err != nil {
+							data.SendEmbed(NewEmbed().
+								SetTitle("ERROR").
+								SetDescription("There was a SQL error, this shouldn't be happening message LockedThread").
+								SetColor(Red))
+						} else {
+							data.SendEmbed(NewEmbed().
+								SetTitle("SUCCESS").
+								SetDescription("Successfully changed resource %s to %s ", resource.Name, data.Arguments[1]).
+								SetColor(Green))
+						}
 					}
+					break
 				}
-				break
+			} else {
+
+				data.SendNoPermission()
+
 			}
 		},
 	})
@@ -248,51 +302,57 @@ func main() {
 	RegisterCommand(&Command{
 		[]string{"-update"},
 		func(data CommandData) {
-			switch len(data.Arguments) {
-			case 0:
-			case 1:
-				data.SendEmbed(NewEmbed().
-					SetTitle("Incorrect Syntax").
-					SetDescription("Incorrect Syntax. Please do -update {resource} {changelog}").
-					SetColor(Red))
-				break
-			default:
-				resourceString := data.Arguments[0]
-				resource, err := GetResource(resourceString)
-				if err != nil {
+			if IsOwner(data.User) {
+				switch len(data.Arguments) {
+				case 0:
+				case 1:
 					data.SendEmbed(NewEmbed().
-						SetTitle("ERROR").
-						SetDescription("Unable to find resource with name %s", resourceString).
+						SetTitle("Incorrect Syntax").
+						SetDescription("Incorrect Syntax. Please do -update {resource} {changelog}").
 						SetColor(Red))
-				} else if len(data.Message.Attachments) > 0 {
-					files := make([]*discordgo.File, len(data.Message.Attachments))
-					var resp *http.Response
-					for e := range data.Message.Attachments {
-						attachment := data.Message.Attachments[e]
-						resp, err = http.Get(attachment.URL)
-						CheckErr(err)
-						files[e] = &discordgo.File{
-							Name:   attachment.Filename,
-							Reader: resp.Body,
+					break
+				default:
+					resourceString := data.Arguments[0]
+					resource, err := GetResource(resourceString)
+					if err != nil {
+						data.SendEmbed(NewEmbed().
+							SetTitle("ERROR").
+							SetDescription("Unable to find resource with name %s", resourceString).
+							SetColor(Red))
+					} else if len(data.Message.Attachments) > 0 {
+						files := make([]*discordgo.File, len(data.Message.Attachments))
+						var resp *http.Response
+						for e := range data.Message.Attachments {
+							attachment := data.Message.Attachments[e]
+							resp, err = http.Get(attachment.URL)
+							CheckErr(err)
+							files[e] = &discordgo.File{
+								Name:   attachment.Filename,
+								Reader: resp.Body,
+							}
 						}
-					}
-					defer resp.Body.Close()
-					_, err := data.Session.ChannelMessageSendComplex(resource.DiscordChannelID, &discordgo.MessageSend{
-						Embed: NewEmbed().
+						defer resp.Body.Close()
+						_, err := data.Session.ChannelMessageSendComplex(resource.DiscordChannelID, &discordgo.MessageSend{
+							Embed: NewEmbed().
+								SetTitle("UPDATE").
+								SetDescription(strings.Join(data.Arguments[1:len(data.Arguments)], " ")).
+								SetColor(Green).MessageEmbed,
+							Files: files,
+						})
+						CheckErr(err)
+					} else {
+						_, err := data.Session.ChannelMessageSendEmbed(resource.DiscordChannelID, NewEmbed().
 							SetTitle("UPDATE").
 							SetDescription(strings.Join(data.Arguments[1:len(data.Arguments)], " ")).
-							SetColor(Green).MessageEmbed,
-						Files: files,
-					})
-					CheckErr(err)
-				} else {
-					_, err := data.Session.ChannelMessageSendEmbed(resource.DiscordChannelID, NewEmbed().
-						SetTitle("UPDATE").
-						SetDescription(strings.Join(data.Arguments[1:len(data.Arguments)], " ")).
-						SetColor(Green).MessageEmbed)
-					CheckErr(err)
+							SetColor(Green).MessageEmbed)
+						CheckErr(err)
+					}
+					break
 				}
-				break
+			} else {
+
+				data.SendNoPermission()
+
 			}
 		},
 	})
@@ -588,6 +648,8 @@ func InitPreparedStatements() {
 
 	stmtGetAllResources, err = mySQL.Prepare("SELECT * FROM " + config.Tables.ResourcesTable)
 	CheckErr(err)
+
+	stmtDeleteResource, err = mySQL.Prepare("DELETE FROM " + config.Tables.ResourcesTable + " where resource_name = ?")
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {

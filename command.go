@@ -43,7 +43,7 @@ func (cd CommandData) GetGuildMember() *discordgo.Member {
 }
 
 func (cd CommandData) String() string {
-	return fmt.Sprintf("[%s, %s, %s, %s, %s, %s]", cd.Label, cd.GuildID, cd.Arguments, cd.Session, cd.User.String(), cd.Channel)
+	return fmt.Sprintf("[%s, %s, %s, %s, %s, %s]", cd.Label, cd.GuildID, cd.Arguments, cd.Session.Token, cd.User.String(), cd.Channel.Name)
 }
 
 func (cd CommandData) SendMessage(message string, a ...interface{}) *discordgo.Message {

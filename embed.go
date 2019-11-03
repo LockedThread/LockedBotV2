@@ -10,7 +10,6 @@ type Embed struct {
 	*discordgo.MessageEmbed
 }
 
-// Constants for message embed character limits
 const (
 	EmbedLimitTitle       = 256
 	EmbedLimitDescription = 2048
@@ -18,7 +17,6 @@ const (
 	EmbedLimitFieldName   = 256
 	EmbedLimitField       = 25
 	EmbedLimitFooter      = 2048
-	EmbedLimit            = 4000
 )
 
 //NewEmbed returns a new embed object
