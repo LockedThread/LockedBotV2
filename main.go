@@ -193,8 +193,8 @@ func main() {
 	})
 
 	RegisterCommand(&Command{
-		Aliases: []string{"-listresources"},
-		Execute: func(data CommandData) {
+		[]string{"-listresources"},
+		func(data CommandData) {
 			resources := GetAllResources()
 			resourceNameArray := make([]string, len(resources))
 			for e := range resources {
@@ -208,8 +208,8 @@ func main() {
 	})
 
 	RegisterCommand(&Command{
-		Aliases: []string{"-rename"},
-		Execute: func(data CommandData) {
+		[]string{"-rename"},
+		func(data CommandData) {
 			switch len(data.Arguments) {
 			case 0:
 			case 1:
@@ -246,8 +246,8 @@ func main() {
 	})
 
 	RegisterCommand(&Command{
-		Aliases: []string{"-update"},
-		Execute: func(data CommandData) {
+		[]string{"-update"},
+		func(data CommandData) {
 			switch len(data.Arguments) {
 			case 0:
 			case 1:
@@ -321,9 +321,16 @@ func main() {
 
 					resources := GetResources(guildMember.User)
 
+					var description string
+					if len(resources) == 0 {
+						description = "Resources: **None**"
+					} else {
+						description = "Resources:  " + JoinArray(resources)
+					}
+
 					data.SendEmbed(NewEmbed().
 						SetTitle("INFO").
-						SetDescription("Resources: %s", JoinArray(resources)).
+						SetDescription(description).
 						SetColor(Yellow))
 				}
 				break
