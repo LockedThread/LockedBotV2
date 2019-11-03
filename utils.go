@@ -98,7 +98,7 @@ func GetUser(discordUser *discordgo.User) (user User, err error) {
 
 	err = row.Scan(&user.ID, &user.Token, &user.DiscordID, &resourceString, &ipAddressesString)
 	if err != nil {
-		return user, GetUserError{"Unable to find user with DiscordID " + discordUser.ID}
+		return user, GetUserError{"Unable to find user with DiscordID " + discordUser.ID + " E: " + err.Error()}
 	}
 	err = json.Unmarshal([]byte(resourceString), &user.Resources)
 	CheckErr(err)
@@ -152,7 +152,7 @@ func GetChannelMentions(message *discordgo.Message, searches int) (mentions []st
 func GetResource(resourceName string) (resource Resource, err error) {
 	err = stmtFindResourceRow.QueryRow(resourceName).Scan(&resource.ID, &resource.Name, &resource.ResponseData, &resource.DiscordChannelID)
 	if err != nil {
-		return resource, GetResourceError{"Unable to find resource with name " + resourceName}
+		return resource, GetResourceError{"Unable to find resource with name " + resourceName + " E: " + err.Error()}
 	}
 	return resource, err
 }
