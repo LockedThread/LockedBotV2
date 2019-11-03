@@ -81,7 +81,9 @@ func FindCommand(label string) *Command {
 func GetResources(user *discordgo.User) (resources []string) {
 	var resourceString string
 	err := stmtFindResourceColumn.QueryRow(user.ID).Scan(&resourceString)
-	CheckErr(err)
+	if err != nil {
+		return resources
+	}
 	if len(resourceString) == 0 {
 		return resources
 	} else {
