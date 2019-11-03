@@ -460,6 +460,7 @@ func InitPreparedStatements() {
 	CheckErr(err)
 
 	stmtUpdateUserIPColumn, err = mySQL.Prepare("UPDATE " + config.Tables.UserTable + " SET ip_addresses = ? WHERE discord_id = ?")
+	CheckErr(err)
 
 	stmtUpdateUserResourceColumn, err = mySQL.Prepare("UPDATE " + config.Tables.UserTable + " SET resources = ? WHERE discord_id = ?")
 	CheckErr(err)
