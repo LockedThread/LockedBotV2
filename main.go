@@ -247,7 +247,7 @@ func main() {
 						SetTitle("ERROR").
 						SetDescription("Unable to find resource with name %s", resourceString).
 						SetColor(Red))
-				} else {
+				} else if len(data.Message.Attachments) > 0 {
 					files := make([]*discordgo.File, len(data.Message.Attachments))
 					var resp *http.Response
 					for e := range data.Message.Attachments {
@@ -260,7 +260,6 @@ func main() {
 						}
 					}
 					defer resp.Body.Close()
-
 					_, err := data.Session.ChannelMessageSendComplex(resource.DiscordChannelID, &discordgo.MessageSend{
 						Embed: NewEmbed().
 							SetTitle("UPDATE").
@@ -268,6 +267,12 @@ func main() {
 							SetColor(Green).MessageEmbed,
 						Files: files,
 					})
+					CheckErr(err)
+				} else {
+					_, err := data.Session.ChannelMessageSendEmbed(resource.DiscordChannelID, NewEmbed().
+						SetTitle("UPDATE").
+						SetDescription(strings.Join(data.Arguments[1:len(data.Arguments)], " ")).
+						SetColor(Green).MessageEmbed)
 					CheckErr(err)
 				}
 				break
