@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/bwmarrin/discordgo"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -173,7 +174,9 @@ func main() {
 				"*-addresource {@mention} {resource} | Adds resource to client for the auth system\n" +
 					"*-createresource {name} | Creates resource for the auth system\n" +
 					"*-createclient {@mention} {token} | Creates client in database\n" +
-					"*-update {resource} [changelog] | Updates a resource with a changelog message\n" +
+					"*-update {resource} {changelog} | Updates a resource with a changelog message\n" +
+					"*-rename {resource} {new name} | Changes the name of a resource\n" +
+					"*-setupdatechannel {resource} {channel} | Sets the update channel for a resource\n" +
 					"-addip {ip-address} | Adds ip to your whitelisted ip addresses\n" +
 					"-setupclient {token} | Sets up your client data in the database\n" +
 					"-clientinfo {@mention} | Displays all information about a client\n\n" +
@@ -183,6 +186,53 @@ func main() {
 				SetTitle("Help for LockedBot V2").
 				SetDescription(description).
 				SetColor(Green))
+		},
+	})
+
+	RegisterCommand(&Command{
+		Aliases: []string{"-update"},
+		Execute: func(data CommandData) {
+			switch len(data.Arguments) {
+			case 0:
+			case 1:
+				data.SendEmbed(NewEmbed().
+					SetTitle("Incorrect Syntax").
+					SetDescription("Incorrect Syntax. Please do -update {resource} {changelog}").
+					SetColor(Red))
+				break
+			default:
+				resourceString := data.Arguments[0]
+				resource, err := GetResource(resourceString)
+				if err != nil {
+					data.SendEmbed(NewEmbed().
+						SetTitle("ERROR").
+						SetDescription("Unable to find resource with name %s", resourceString).
+						SetColor(Red))
+				} else {
+					files := make([]*discordgo.File, len(data.Message.Attachments))
+					var resp *http.Response
+					for e := range data.Message.Attachments {
+						attachment := data.Message.Attachments[e]
+						resp, err = http.Get(attachment.URL)
+						CheckErr(err)
+						files[e] = &discordgo.File{
+							Name:   attachment.Filename,
+							Reader: resp.Body,
+						}
+					}
+					defer resp.Body.Close()
+
+					_, err := data.Session.ChannelMessageSendComplex(resource.DiscordChannelID, &discordgo.MessageSend{
+						Embed: NewEmbed().
+							SetTitle("UPDATE").
+							SetDescription(strings.Join(data.Arguments[1:len(data.Arguments)], " ")).
+							SetColor(Green).MessageEmbed,
+						Files: files,
+					})
+					CheckErr(err)
+				}
+				break
+			}
 		},
 	})
 
@@ -353,7 +403,7 @@ func main() {
 						}
 					} else {
 						if len(data.Arguments) == 2 {
-							mentions := getChannelMentions(data.Message, 1)
+							mentions := GetChannelMentions(data.Message, 1)
 							CheckErr(err)
 							_, err = stmtInsertResourceRow.Exec(role.Name, "", mentions[0])
 						} else {

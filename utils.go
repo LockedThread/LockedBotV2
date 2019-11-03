@@ -139,7 +139,7 @@ func JoinArray(array []string) string {
 
 var patternChannels = regexp.MustCompile("<#[^>]*>")
 
-func getChannelMentions(message *discordgo.Message, searches int) (mentions []string) {
+func GetChannelMentions(message *discordgo.Message, searches int) (mentions []string) {
 	mentions = patternChannels.FindAllString(message.Content, searches)
 
 	for e := range mentions {
@@ -147,4 +147,12 @@ func getChannelMentions(message *discordgo.Message, searches int) (mentions []st
 		mentions[e] = mention[2:20]
 	}
 	return mentions
+}
+
+func GetResource(resourceName string) (resource Resource, err error) {
+	err = stmtFindResourceRow.QueryRow(resourceName).Scan(&resource.ID, &resource.Name, &resource.ResponseData, &resource.DiscordChannelID)
+	if err != nil {
+		return resource, GetResourceError{"Unable to find resource with name " + resourceName}
+	}
+	return resource, err
 }

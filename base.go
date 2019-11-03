@@ -22,7 +22,7 @@ type User struct {
 }
 
 func (user User) String() string {
-	return fmt.Sprintf("%d, %s, %s, %s, %s ", user.ID, user.Token, user.DiscordID, strings.Join(user.Resources, ","), strings.Join(user.IPAddresses, ","))
+	return fmt.Sprintf("%d, %s, %s, %s, %s", user.ID, user.Token, user.DiscordID, strings.Join(user.Resources, ","), strings.Join(user.IPAddresses, ","))
 }
 
 type GetUserError struct {
@@ -30,5 +30,24 @@ type GetUserError struct {
 }
 
 func (err GetUserError) Error() string {
+	return fmt.Sprintf("%s", err.message)
+}
+
+type Resource struct {
+	ID               int
+	Name             string
+	ResponseData     string
+	DiscordChannelID string
+}
+
+func (response Resource) String() string {
+	return fmt.Sprintf("%d, %s, %s, %s", response.ID, response.Name, response.ResponseData, response.DiscordChannelID)
+}
+
+type GetResourceError struct {
+	message string
+}
+
+func (err GetResourceError) Error() string {
 	return fmt.Sprintf("%s", err.message)
 }
