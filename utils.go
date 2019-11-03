@@ -156,3 +156,14 @@ func GetResource(resourceName string) (resource Resource, err error) {
 	}
 	return resource, err
 }
+
+func GetAllResources() (resources []Resource) {
+	rows, err := stmtGetAllResources.Query()
+	CheckErr(err)
+	for rows.Next() {
+		var resource Resource
+		err = rows.Scan(&resource.ID, &resource.Name, &resource.ResponseData, &resource.DiscordChannelID)
+		resources = append(resources, resource)
+	}
+	return resources
+}

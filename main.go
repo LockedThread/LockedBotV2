@@ -26,6 +26,7 @@ var (
 	stmtFindResourceRow    *sql.Stmt
 	stmtFindResourceColumn *sql.Stmt
 	stmtUpdateResourceName *sql.Stmt
+	stmtGetAllResources    *sql.Stmt
 
 	stmtUpdateUserResourceColumn *sql.Stmt
 	stmtInsertUserRow            *sql.Stmt
@@ -178,6 +179,7 @@ func main() {
 					"*-update {resource} {changelog} | Updates a resource with a changelog message\n" +
 					"*-rename {resource} {new name} | Changes the name of a resource\n" +
 					"*-setupdatechannel {resource} {channel} | Sets the update channel for a resource\n" +
+					"-listresources | Shows you all of our resources\n" +
 					"-addip {ip-address} | Adds ip to your whitelisted ip addresses\n" +
 					"-setupclient {token} | Sets up your client data in the database\n" +
 					"-clientinfo {@mention} | Displays all information about a client\n\n" +
@@ -187,6 +189,21 @@ func main() {
 				SetTitle("Help for LockedBot V2").
 				SetDescription(description).
 				SetColor(Green))
+		},
+	})
+
+	RegisterCommand(&Command{
+		Aliases: []string{"-listresources"},
+		Execute: func(data CommandData) {
+			resources := GetAllResources()
+			resourceNameArray := make([]string, len(resources))
+			for e := range resources {
+				resourceNameArray[e] = resources[e].Name
+			}
+			data.SendEmbed(NewEmbed().
+				SetTitle("Resources").
+				SetDescription(JoinArray(resourceNameArray)).
+				SetColor(Yellow))
 		},
 	})
 
@@ -560,6 +577,9 @@ func InitPreparedStatements() {
 	CheckErr(err)
 
 	stmtUpdateResourceName, err = mySQL.Prepare("UPDATE " + config.Tables.ResourcesTable + " SET resource_name = ? WHERE resource_name = ?")
+	CheckErr(err)
+
+	stmtGetAllResources, err = mySQL.Prepare("SELECT * FROM " + config.Tables.ResourcesTable)
 	CheckErr(err)
 }
 
