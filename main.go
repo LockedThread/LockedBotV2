@@ -61,6 +61,58 @@ func main() {
 	discord.AddHandler(messageCreate)
 
 	RegisterCommand(&Command{
+		Aliases: []string{"-importclients"},
+		Execute: func(data CommandData) {
+			if IsOwner(data.User) {
+				guild := data.GetGuild()
+				for e := range guild.Members {
+					member := guild.Members[e]
+
+					rows, err := stmtFindUserRow.Query(member.User.ID)
+					CheckErr(err)
+					resourceArray := GetResourcesFromRoles(data.Session, member)
+					bytes, err := json.Marshal(resourceArray)
+					CheckErr(err)
+
+					if !rows.Next() {
+						licenseKey := RandomString(10)
+						_, err = stmtInsertUserRow.Exec(licenseKey, member.User.ID, "[]", string(bytes))
+						CheckErr(err)
+						channel, err := data.Session.UserChannelCreate(member.User.ID)
+						if err != nil {
+							data.SendMessage("Unable to message %s their new information.", member.User.Mention())
+						} else {
+							_, err = data.Session.ChannelMessageSendEmbed(channel.ID, NewEmbed().
+								SetTitle("RESOURCE IMPORT").
+								SetDescription("New License Key: %s\nLicensed Resources: %s\nIf you are missing any resource please message LockedThread ASAP. Thank you for being an amazing customer :heart:", licenseKey, JoinArray(resourceArray)).
+								SetColor(Green).MessageEmbed)
+							if err != nil {
+								data.SendMessage("Unable to message %s their new information.", member.User.Mention())
+							}
+						}
+					} else {
+						_, err = stmtUpdateUserResourceColumn.Exec(string(bytes), member.User.ID)
+						channel, err := data.Session.UserChannelCreate(member.User.ID)
+						if err != nil {
+							data.SendMessage("Unable to message %s their new information.", member.User.Mention())
+						} else {
+							_, err = data.Session.ChannelMessageSendEmbed(channel.ID, NewEmbed().
+								SetTitle("RESOURCE IMPORT").
+								SetDescription("Licensed Resources: %s\nIf you are missing any resource please message LockedThread ASAP. Thank you for being an amazing customer :heart:", JoinArray(resourceArray)).
+								SetColor(Green).MessageEmbed)
+							if err != nil {
+								data.SendMessage("Unable to message %s their new information.", member.User.Mention())
+							}
+						}
+					}
+				}
+			} else {
+				data.SendNoPermission()
+			}
+		},
+	})
+
+	RegisterCommand(&Command{
 		[]string{"-help"},
 		func(data CommandData) {
 
@@ -415,7 +467,7 @@ func main() {
 					if len(mentions) == 0 {
 						data.SendEmbed(NewEmbed().
 							SetTitle("Incorrect Syntax").
-							SetDescription("Incorrect Syntax. Please do -createclient [@mention] [token]").
+							SetDescription("Incorrect Syntax. Please do -addresource [@mention] [token]").
 							SetColor(Red))
 					} else {
 						guildMember, err := data.Session.GuildMember(data.GuildID, mentions[0].ID)

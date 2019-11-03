@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"github.com/bwmarrin/discordgo"
 	"log"
+	"math/rand"
 	"regexp"
 	"strings"
+	"time"
 )
 
 func CheckErr(err error) {
@@ -166,6 +168,42 @@ func GetAllResources() (resources []Resource) {
 		var resource Resource
 		err = rows.Scan(&resource.ID, &resource.Name, &resource.ResponseData, &resource.DiscordChannelID)
 		resources = append(resources, resource)
+	}
+	return resources
+}
+
+const charset = "abcdefghijklmnopqrstuvwxyz" +
+	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" +
+	"0123456789"
+
+var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
+
+func RandomString(length int) string {
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = charset[seededRand.Intn(len(charset))]
+	}
+	return string(b)
+}
+
+func GetRoleFromRoleID(guild *discordgo.Guild, roleID string) *discordgo.Role {
+	for e := range guild.Roles {
+		role := guild.Roles[e]
+		if role.ID == roleID {
+			return role
+		}
+	}
+	return nil
+}
+
+func GetResourcesFromRoles(session *discordgo.Session, member *discordgo.Member) (resources []string) {
+	guild := GetGuild(session, member.GuildID)
+	for e := range member.Roles {
+
+		resource, err := GetResource(GetRoleFromRoleID(guild, member.Roles[e]).Name)
+		if err == nil {
+			resources = append(resources, resource.Name)
+		}
 	}
 	return resources
 }
