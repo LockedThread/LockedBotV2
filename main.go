@@ -86,19 +86,31 @@ func main() {
 						guild := GetGuild(data.Session, data.GuildID)
 						role := GetRole(guild, data.Arguments[1])
 						if role == nil {
-							data.SendMessage("Unable to add role %[1]s to %[2]s because that role doesn't exist!", data.Arguments[1], guildMember.Mention())
+							data.SendEmbed(NewEmbed().
+								SetTitle("ERROR").
+								SetDescription("Unable to add role %[1]s to %[2]s because that role doesn't exist!", data.Arguments[1], guildMember.Mention()).
+								SetColor(Red))
 							return
 						}
 						hasRole := HasRole(guildMember, role.ID)
 						if !hasRole {
 							err := data.Session.GuildMemberRoleAdd(guild.ID, guildMember.User.ID, role.ID)
 							if err != nil {
-								data.SendMessage("An error occured report this to LockedThread now!")
+								data.SendEmbed(NewEmbed().
+									SetTitle("ERROR").
+									SetDescription("An error occured report this to LockedThread now!").
+									SetColor(Red))
 							} else {
-								data.SendMessage("You have added the resource %[1]s to %[2]s.", role.Name, guildMember.Mention())
+								data.SendEmbed(NewEmbed().
+									SetTitle("ERROR").
+									SetDescription("You have added the resource %[1]s to %[2]s.", role.Name, guildMember.Mention()).
+									SetColor(Red))
 							}
 						} else {
-							data.SendMessage("%s already has that role but we will update their resource list in the database.", guildMember.Mention())
+							data.SendEmbed(NewEmbed().
+								SetTitle("SUCCESS").
+								SetDescription("%s already has that role but we will update their resource list in the database.", guildMember.Mention()).
+								SetColor(Green))
 						}
 					}
 					var resources []string
@@ -108,10 +120,16 @@ func main() {
 						resources = GetResources(guildMember.User)
 						for e := range resources {
 							if resources[e] == "*" {
-								data.SendMessage("That client has a resource wildcard, no point in adding a resource!")
+								data.SendEmbed(NewEmbed().
+									SetTitle("ERROR").
+									SetDescription("That client has a resource wildcard, no point in adding a resource!").
+									SetColor(Red))
 								return
 							} else if strings.ToLower(resources[e]) == strings.ToLower(data.Arguments[1]) {
-								data.SendMessage("That resource is already found for %s in the database", guildMember.Mention())
+								data.SendEmbed(NewEmbed().
+									SetTitle("ERROR").
+									SetDescription("That resource is already found for %s in the database", guildMember.Mention()).
+									SetColor(Red))
 								return
 							}
 						}
@@ -123,7 +141,10 @@ func main() {
 					_, err = stmtUpdateUserResourceColumn.Exec(string(bytes), guildMember.User.ID)
 					CheckErr(err)
 
-					data.SendMessage("Added resource to %s in the database", guildMember.Mention())
+					data.SendEmbed(NewEmbed().
+						SetTitle("SUCCESS").
+						SetDescription("Added resource to %s in the database", guildMember.Mention()).
+						SetColor(Green))
 					break
 				}
 			} else {
@@ -151,9 +172,15 @@ func main() {
 						CheckErr(err)
 						role, err = data.Session.GuildRoleEdit(guild.ID, role.ID, data.Arguments[0], 0xdb7c23, role.Hoist, 3263553, false)
 						CheckErr(err)
-						data.SendMessage("Create role & resource with name %s", role.Name)
+						data.SendEmbed(NewEmbed().
+							SetTitle("SUCCESS").
+							SetDescription("Create role & resource with name %s", role.Name).
+							SetColor(Green))
 					} else {
-						data.SendMessage("Resource already found with name %s", role.Name)
+						data.SendEmbed(NewEmbed().
+							SetTitle("ERROR").
+							SetDescription("Resource already found with name %s", role.Name).
+							SetColor(Red))
 					}
 					rows, err := stmtFindResourceRow.Query(role.Name)
 					CheckErr(err)
@@ -195,11 +222,18 @@ func main() {
 
 						next := rows.Next()
 						if next {
-							data.SendMessage("Unable to create client for %s because that client already exists in the database!", mentionedUser.Mention())
+							data.SendEmbed(NewEmbed().
+								SetTitle("ERROR").
+								SetDescription("Unable to create client for %s because that client already exists in the database!", mentionedUser.Mention()).
+								SetColor(Red))
 						} else {
 							_, err := stmtInsertUserRow.Exec(data.Arguments[1], mentionedUser.ID, "", "")
 							CheckErr(err)
-							data.SendMessage("Created client for %s.", mentionedUser.Mention())
+
+							data.SendEmbed(NewEmbed().
+								SetTitle("SUCCESS").
+								SetDescription("Created client for %s.", mentionedUser.Mention()).
+								SetColor(Green))
 						}
 						err = rows.Close()
 						CheckErr(err)
