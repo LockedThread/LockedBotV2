@@ -1,6 +1,9 @@
 package main
 
-import "github.com/bwmarrin/discordgo"
+import (
+	"fmt"
+	"github.com/bwmarrin/discordgo"
+)
 
 //Embed ...
 type Embed struct {
@@ -30,9 +33,16 @@ func (e *Embed) SetTitle(name string) *Embed {
 }
 
 //SetDescription [desc]
-func (e *Embed) SetDescription(description string) *Embed {
+func (e *Embed) SetDescription(description string, arguments ...interface{}) *Embed {
 	if len(description) > 2048 {
-		description = description[:2048]
+		if len(arguments) == 0 {
+			description = description[:2048]
+		} else {
+			description = fmt.Sprintf(description[:2048], arguments...)
+		}
+	}
+	if len(arguments) > 0 {
+		description = fmt.Sprintf(description, arguments...)
 	}
 	e.Description = description
 	return e
