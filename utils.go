@@ -91,6 +91,28 @@ func GetResources(user *discordgo.User) (resources []string) {
 	return resources
 }
 
+//noinspection SpellCheckingInspection
+func GetUser(discordUser *discordgo.User) (user User, err error) {
+	row := stmtFindUserRow.QueryRow(discordUser.ID)
+	var resourceString, ipAddressesString string
+
+	err = row.Scan(&user.ID, &user.Token, &user.DiscordID, &resourceString, &ipAddressesString)
+	if err != nil {
+		return user, GetUserError{"Unable to find user with DiscordID " + discordUser.ID}
+	}
+	err = json.Unmarshal([]byte(resourceString), &user.Resources)
+	CheckErr(err)
+	err = json.Unmarshal([]byte(ipAddressesString), &user.IPAddresses)
+	CheckErr(err)
+	return user, err
+}
+
+var ipAddressesPattern, _ = regexp.Compile(`^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])$`)
+
+func IsValidIP4(ipAddress string) bool {
+	return ipAddressesPattern.MatchString(strings.Trim(ipAddress, " "))
+}
+
 func JoinArray(array []string) string {
 	if len(array) == 0 {
 		return ""

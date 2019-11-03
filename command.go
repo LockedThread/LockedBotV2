@@ -32,6 +32,16 @@ type CommandData struct {
 	Channel   *discordgo.Channel
 }
 
+func (cd CommandData) GetGuild() *discordgo.Guild {
+	return GetGuild(cd.Session, cd.GuildID)
+}
+
+func (cd CommandData) GetGuildMember() *discordgo.Member {
+	guildMember, err := cd.Session.GuildMember(cd.GuildID, cd.User.ID)
+	CheckErr(err)
+	return guildMember
+}
+
 func (cd CommandData) String() string {
 	return fmt.Sprintf("[%s, %s, %s, %s, %s, %s]", cd.Label, cd.GuildID, cd.Arguments, cd.Session, cd.User.String(), cd.Channel)
 }

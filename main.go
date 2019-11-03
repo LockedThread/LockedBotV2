@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 )
 
 import _ "github.com/go-sql-driver/mysql"
@@ -27,6 +28,7 @@ var (
 	stmtUpdateUserResourceColumn *sql.Stmt
 	stmtInsertUserRow            *sql.Stmt
 	stmtFindUserRow              *sql.Stmt
+	stmtUpdateUserIPColumn       *sql.Stmt
 )
 
 func init() {
@@ -53,6 +55,114 @@ func main() {
 	CheckErr(err)
 
 	discord.AddHandler(messageCreate)
+
+	RegisterCommand(&Command{
+		[]string{"-setupclient"},
+		func(data CommandData) {
+
+			switch len(data.Arguments) {
+			case 0:
+				data.SendEmbed(NewEmbed().
+					SetTitle("Incorrect Syntax").
+					SetDescription("Incorrect Syntax. Please do -setupclient [token]").
+					SetColor(Red))
+				break
+			case 1:
+				rows, err := stmtFindUserRow.Query(data.User.ID)
+				CheckErr(err)
+
+				next := rows.Next()
+				if next {
+					data.SendEmbed(NewEmbed().
+						SetTitle("ERROR").
+						SetDescription("You have already setup yourself in the database. Make sure to add your ips using -addip <3").
+						SetColor(Red))
+				} else {
+					_, err := stmtInsertUserRow.Exec(data.Arguments[0], data.User.ID, "[]", "[]")
+					CheckErr(err)
+
+					data.SendEmbed(NewEmbed().
+						SetTitle("SUCCESS").
+						SetDescription("Thank you for setting up yourself as a client, make sure to add your ips using -addip <3").
+						SetColor(Green))
+				}
+				err = rows.Close()
+				CheckErr(err)
+				break
+			}
+		},
+	})
+
+	RegisterCommand(&Command{
+		[]string{"-addip"},
+		func(data CommandData) {
+			switch len(data.Arguments) {
+			case 0:
+				data.SendEmbed(NewEmbed().
+					SetTitle("Incorrect Syntax").
+					SetDescription("Incorrect Syntax. Please do -addip [ip]").
+					SetColor(Red))
+				break
+			case 1:
+				if !IsValidIP4(data.Arguments[0]) {
+					data.SendEmbed(NewEmbed().
+						SetTitle("ERROR").
+						SetDescription("%s is not a valid IPv4", data.Arguments[0]).
+						SetColor(Red))
+					break
+				}
+				user, err := GetUser(data.User)
+				if err != nil {
+					data.SendEmbed(NewEmbed().
+						SetTitle("ERROR").
+						SetDescription(err.Error()).
+						SetColor(Red))
+					break
+				} else {
+					for e := range user.IPAddresses {
+						if user.IPAddresses[e] == data.Arguments[0] {
+							embed := data.SendEmbed(NewEmbed().
+								SetTitle("ERROR").
+								SetDescription("You already have that IP in your whitelisted ip address list").
+								SetColor(Red))
+							timer := time.NewTimer(3 * time.Second)
+							go func() {
+								<-timer.C
+								err = data.Session.ChannelMessageDelete(data.Channel.ID, embed.ID)
+								CheckErr(err)
+								err = data.Session.ChannelMessageDelete(data.Channel.ID, data.Message.ID)
+								CheckErr(err)
+							}()
+
+							return
+						}
+					}
+
+					user.IPAddresses = append(user.IPAddresses, data.Arguments[0])
+
+					bytes, err := json.Marshal(user.IPAddresses)
+					CheckErr(err)
+					_, err = stmtUpdateUserIPColumn.Exec(string(bytes), user.DiscordID)
+					CheckErr(err)
+
+					embed := data.SendEmbed(NewEmbed().
+						SetTitle("SUCCESS").
+						SetDescription("You have added %s to your whitelisted ip address list", data.Arguments[0]).
+						SetColor(Green))
+
+					timer := time.NewTimer(3 * time.Second)
+					go func() {
+						<-timer.C
+						err = data.Session.ChannelMessageDelete(data.Channel.ID, embed.ID)
+						CheckErr(err)
+						err = data.Session.ChannelMessageDelete(data.Channel.ID, data.Message.ID)
+						CheckErr(err)
+					}()
+					break
+				}
+			}
+		},
+	})
 
 	RegisterCommand(&Command{
 		[]string{"-help"},
@@ -129,7 +239,7 @@ func main() {
 						guildMember, err := data.Session.GuildMember(data.GuildID, mentions[0].ID)
 						CheckErr(err)
 						if data.Arguments[1] != "*" {
-							guild := GetGuild(data.Session, data.GuildID)
+							guild := data.GetGuild()
 							role := GetRole(guild, data.Arguments[1])
 							if role == nil {
 								data.SendEmbed(NewEmbed().
@@ -208,7 +318,7 @@ func main() {
 					break
 				case 1:
 				case 2:
-					guild := GetGuild(data.Session, data.GuildID)
+					guild := data.GetGuild()
 					role := GetRole(guild, data.Arguments[0])
 					var roleFound, createdRole bool
 					if role == nil {
@@ -296,7 +406,7 @@ func main() {
 								SetDescription("Unable to create client for %s because that client already exists in the database!", mentionedUser.Mention()).
 								SetColor(Red))
 						} else {
-							_, err := stmtInsertUserRow.Exec(data.Arguments[1], mentionedUser.ID, "", "")
+							_, err := stmtInsertUserRow.Exec(data.Arguments[1], mentionedUser.ID, "[]", "[]")
 							CheckErr(err)
 
 							data.SendEmbed(NewEmbed().
@@ -344,6 +454,8 @@ func InitPreparedStatements() {
 
 	stmtFindUserRow, err = mySQL.Prepare("SELECT * FROM " + config.Tables.UserTable + " WHERE discord_id = ?")
 	CheckErr(err)
+
+	stmtUpdateUserIPColumn, err = mySQL.Prepare("UPDATE " + config.Tables.UserTable + " SET ip_addresses = ? WHERE discord_id = ?")
 
 	stmtUpdateUserResourceColumn, err = mySQL.Prepare("UPDATE " + config.Tables.UserTable + " SET resources = ? WHERE discord_id = ?")
 	CheckErr(err)
