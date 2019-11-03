@@ -55,8 +55,8 @@ func main() {
 	discord.AddHandler(messageCreate)
 
 	RegisterCommand(&Command{
-		Aliases: []string{"-help"},
-		Execute: func(data CommandData) {
+		[]string{"-help"},
+		func(data CommandData) {
 
 			data.SendEmbed(NewEmbed().
 				SetTitle("Help for LockedBot V2").
