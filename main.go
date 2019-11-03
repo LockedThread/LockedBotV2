@@ -25,6 +25,7 @@ var (
 	stmtInsertResourceRow  *sql.Stmt
 	stmtFindResourceRow    *sql.Stmt
 	stmtFindResourceColumn *sql.Stmt
+	stmtUpdateResourceName *sql.Stmt
 
 	stmtUpdateUserResourceColumn *sql.Stmt
 	stmtInsertUserRow            *sql.Stmt
@@ -186,6 +187,44 @@ func main() {
 				SetTitle("Help for LockedBot V2").
 				SetDescription(description).
 				SetColor(Green))
+		},
+	})
+
+	RegisterCommand(&Command{
+		Aliases: []string{"-rename"},
+		Execute: func(data CommandData) {
+			switch len(data.Arguments) {
+			case 0:
+			case 1:
+				data.SendEmbed(NewEmbed().
+					SetTitle("Incorrect Syntax").
+					SetDescription("Incorrect Syntax. Please do -rename {resource} {new name}").
+					SetColor(Red))
+				break
+			default:
+				resourceString := data.Arguments[0]
+				resource, err := GetResource(resourceString)
+				if err != nil {
+					data.SendEmbed(NewEmbed().
+						SetTitle("ERROR").
+						SetDescription("Unable to find resource with name %s", resourceString).
+						SetColor(Red))
+				} else {
+					_, err := stmtUpdateResourceName.Exec(data.Arguments[1], resource.Name)
+					if err != nil {
+						data.SendEmbed(NewEmbed().
+							SetTitle("ERROR").
+							SetDescription("There was a SQL error, this shouldn't be happening message LockedThread").
+							SetColor(Red))
+					} else {
+						data.SendEmbed(NewEmbed().
+							SetTitle("SUCCESS").
+							SetDescription("Successfully changed resource %s to %s ", resource.Name, data.Arguments[1]).
+							SetColor(Green))
+					}
+				}
+				break
+			}
 		},
 	})
 
@@ -513,6 +552,9 @@ func InitPreparedStatements() {
 	CheckErr(err)
 
 	stmtUpdateUserResourceColumn, err = mySQL.Prepare("UPDATE " + config.Tables.UserTable + " SET resources = ? WHERE discord_id = ?")
+	CheckErr(err)
+
+	stmtUpdateResourceName, err = mySQL.Prepare("UPDATE " + config.Tables.ResourcesTable + " SET resource_name = ? WHERE resource_name = ?")
 	CheckErr(err)
 }
 
