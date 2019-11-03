@@ -168,12 +168,16 @@ func main() {
 		[]string{"-help"},
 		func(data CommandData) {
 
-			description := "-clientinfo {@mention} | Displays all information about a client\n" +
+			description :=
 				//"-prices | dms you prices on all of our products & services\n" +
-				"-addresource {@mention} {resource} | Adds resource to client for the auth system\n" +
-				"-createresource {name} | Creates resource for the auth system\n" +
-				"-createclient {@mention} {token} | Creates client in database\n" +
-				"-update {resource} [changelog] | Updates a resource with a changelog message"
+				"*-addresource {@mention} {resource} | Adds resource to client for the auth system\n" +
+					"*-createresource {name} | Creates resource for the auth system\n" +
+					"*-createclient {@mention} {token} | Creates client in database\n" +
+					"*-update {resource} [changelog] | Updates a resource with a changelog message\n" +
+					"-addip {ip-address} | Adds ip to your whitelisted ip addresses\n" +
+					"-setupclient {token} | Sets up your client data in the database\n" +
+					"-clientinfo {@mention} | Displays all information about a client\n\n" +
+					"All commands annotated by * are admin only!"
 
 			data.SendEmbed(NewEmbed().
 				SetTitle("Help for LockedBot V2").
