@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/bwmarrin/discordgo"
 	"log"
+	"regexp"
 	"strings"
 )
 
@@ -88,4 +89,40 @@ func GetResources(user *discordgo.User) (resources []string) {
 		CheckErr(err)
 	}
 	return resources
+}
+
+func JoinArray(array []string) string {
+	if len(array) == 0 {
+		return ""
+	} else if len(array) == 1 {
+		return array[0]
+	} else if len(array) == 2 {
+		return array[0] + " and " + array[1]
+	} else {
+		result := ""
+
+		for e := range array {
+			part := array[e]
+			if e == len(array)-1 {
+				result += part
+			} else if e == len(array)-2 {
+				result += part + ", and "
+			} else {
+				result += part + ", "
+			}
+		}
+		return result
+	}
+}
+
+var patternChannels = regexp.MustCompile("<#[^>]*>")
+
+func getChannelMentions(message *discordgo.Message, searches int) (mentions []string) {
+	mentions = patternChannels.FindAllString(message.Content, searches)
+
+	for e := range mentions {
+		mention := mentions[e]
+		mentions[e] = mention[2:20]
+	}
+	return mentions
 }

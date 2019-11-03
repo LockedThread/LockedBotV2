@@ -58,10 +58,51 @@ func main() {
 		[]string{"-help"},
 		func(data CommandData) {
 
+			description := "-clientinfo {@mention} | Displays all information about a client\n" +
+				//"-prices | dms you prices on all of our products & services\n" +
+				"-addresource {@mention} {resource} | Adds resource to client for the auth system\n" +
+				"-createresource {name} | Creates resource for the auth system\n" +
+				"-createclient {@mention} {token} | Creates client in database\n" +
+				"-update {resource} [changelog] | Updates a resource with a changelog message"
+
 			data.SendEmbed(NewEmbed().
 				SetTitle("Help for LockedBot V2").
-				SetDescription("-new | creates a ticket\n-clientinfo {@mention} | dms you information about a client\n-prices | dms you prices on all of our products & services").
+				SetDescription(description).
 				SetColor(Green))
+		},
+	})
+
+	RegisterCommand(&Command{
+		[]string{"-clientinfo"},
+		func(data CommandData) {
+			switch len(data.Arguments) {
+			case 0:
+				data.SendEmbed(NewEmbed().
+					SetTitle("Incorrect Syntax").
+					SetDescription("Incorrect Syntax. Please do -clientinfo [@mention]").
+					SetColor(Red))
+				break
+			case 1:
+				mentions := data.Message.Mentions
+
+				if len(mentions) == 0 {
+					data.SendEmbed(NewEmbed().
+						SetTitle("Incorrect Syntax").
+						SetDescription("Incorrect Syntax. Please do -clientinfo [@mention]").
+						SetColor(Red))
+				} else {
+					guildMember, err := data.Session.GuildMember(data.GuildID, mentions[0].ID)
+					CheckErr(err)
+
+					resources := GetResources(guildMember.User)
+
+					data.SendEmbed(NewEmbed().
+						SetTitle("INFO").
+						SetDescription("Resources: %s", JoinArray(resources)).
+						SetColor(Yellow))
+				}
+				break
+			}
 		},
 	})
 
@@ -79,73 +120,74 @@ func main() {
 					break
 				case 2:
 					mentions := data.Message.Mentions
-
-					guildMember, err := data.Session.GuildMember(data.GuildID, mentions[0].ID)
-					CheckErr(err)
-					if data.Arguments[1] != "*" {
-						guild := GetGuild(data.Session, data.GuildID)
-						role := GetRole(guild, data.Arguments[1])
-						if role == nil {
-							data.SendEmbed(NewEmbed().
-								SetTitle("ERROR").
-								SetDescription("Unable to add role %[1]s to %[2]s because that role doesn't exist!", data.Arguments[1], guildMember.Mention()).
-								SetColor(Red))
-							return
-						}
-						hasRole := HasRole(guildMember, role.ID)
-						if !hasRole {
-							err := data.Session.GuildMemberRoleAdd(guild.ID, guildMember.User.ID, role.ID)
-							if err != nil {
+					if len(mentions) == 0 {
+						data.SendEmbed(NewEmbed().
+							SetTitle("Incorrect Syntax").
+							SetDescription("Incorrect Syntax. Please do -createclient [@mention] [token]").
+							SetColor(Red))
+					} else {
+						guildMember, err := data.Session.GuildMember(data.GuildID, mentions[0].ID)
+						CheckErr(err)
+						if data.Arguments[1] != "*" {
+							guild := GetGuild(data.Session, data.GuildID)
+							role := GetRole(guild, data.Arguments[1])
+							if role == nil {
 								data.SendEmbed(NewEmbed().
 									SetTitle("ERROR").
-									SetDescription("An error occured report this to LockedThread now!").
+									SetDescription("Unable to add role %[1]s to %[2]s because that role doesn't exist!", data.Arguments[1], guildMember.Mention()).
 									SetColor(Red))
+								return
+							}
+							hasRole := HasRole(guildMember, role.ID)
+							if !hasRole {
+								err := data.Session.GuildMemberRoleAdd(guild.ID, guildMember.User.ID, role.ID)
+								if err != nil {
+									data.SendEmbed(NewEmbed().
+										SetTitle("ERROR").
+										SetDescription("An error occured report this to LockedThread now!").
+										SetColor(Red))
+								}
 							} else {
 								data.SendEmbed(NewEmbed().
-									SetTitle("ERROR").
-									SetDescription("You have added the resource %[1]s to %[2]s.", role.Name, guildMember.Mention()).
-									SetColor(Red))
+									SetTitle("SUCCESS").
+									SetDescription("%s already has that role but we will update their resource list in the database.", guildMember.Mention()).
+									SetColor(Green))
 							}
+						}
+						var resources []string
+						if data.Arguments[1] == "*" {
+							resources = []string{"*"}
 						} else {
-							data.SendEmbed(NewEmbed().
-								SetTitle("SUCCESS").
-								SetDescription("%s already has that role but we will update their resource list in the database.", guildMember.Mention()).
-								SetColor(Green))
-						}
-					}
-					var resources []string
-					if data.Arguments[1] == "*" {
-						resources = []string{"*"}
-					} else {
-						resources = GetResources(guildMember.User)
-						for e := range resources {
-							if resources[e] == "*" {
-								data.SendEmbed(NewEmbed().
-									SetTitle("ERROR").
-									SetDescription("That client has a resource wildcard, no point in adding a resource!").
-									SetColor(Red))
-								return
-							} else if strings.ToLower(resources[e]) == strings.ToLower(data.Arguments[1]) {
-								data.SendEmbed(NewEmbed().
-									SetTitle("ERROR").
-									SetDescription("That resource is already found for %s in the database", guildMember.Mention()).
-									SetColor(Red))
-								return
+							resources = GetResources(guildMember.User)
+							for e := range resources {
+								if resources[e] == "*" {
+									data.SendEmbed(NewEmbed().
+										SetTitle("ERROR").
+										SetDescription("That client has a resource wildcard, no point in adding a resource!").
+										SetColor(Red))
+									return
+								} else if strings.ToLower(resources[e]) == strings.ToLower(data.Arguments[1]) {
+									data.SendEmbed(NewEmbed().
+										SetTitle("ERROR").
+										SetDescription("That resource is already found for %s in the database", guildMember.Mention()).
+										SetColor(Red))
+									return
+								}
 							}
+							resources = append(resources, data.Arguments[1])
 						}
-						resources = append(resources, data.Arguments[1])
+
+						bytes, err := json.Marshal(resources)
+						CheckErr(err)
+						_, err = stmtUpdateUserResourceColumn.Exec(string(bytes), guildMember.User.ID)
+						CheckErr(err)
+
+						data.SendEmbed(NewEmbed().
+							SetTitle("Success").
+							SetDescription("You have added the resource %[1]s to %[2]s.", data.Arguments[1], guildMember.Mention()).
+							SetColor(Green))
+						break
 					}
-
-					bytes, err := json.Marshal(resources)
-					CheckErr(err)
-					_, err = stmtUpdateUserResourceColumn.Exec(string(bytes), guildMember.User.ID)
-					CheckErr(err)
-
-					data.SendEmbed(NewEmbed().
-						SetTitle("SUCCESS").
-						SetDescription("Added resource to %s in the database", guildMember.Mention()).
-						SetColor(Green))
-					break
 				}
 			} else {
 				data.SendNoPermission()
@@ -161,37 +203,64 @@ func main() {
 				case 0:
 					data.SendEmbed(NewEmbed().
 						SetTitle("Incorrect Syntax").
-						SetDescription("Incorrect Syntax. Please do -createresource [resource/rolename]").
+						SetDescription("Incorrect Syntax. Please do -createresource {resource/rolename} [channel-mention]").
 						SetColor(Red))
 					break
 				case 1:
+				case 2:
 					guild := GetGuild(data.Session, data.GuildID)
 					role := GetRole(guild, data.Arguments[0])
+					var roleFound, createdRole bool
 					if role == nil {
 						role, err = data.Session.GuildRoleCreate(guild.ID)
 						CheckErr(err)
 						role, err = data.Session.GuildRoleEdit(guild.ID, role.ID, data.Arguments[0], 0xdb7c23, role.Hoist, 3263553, false)
 						CheckErr(err)
-						data.SendEmbed(NewEmbed().
-							SetTitle("SUCCESS").
-							SetDescription("Create role & resource with name %s", role.Name).
-							SetColor(Green))
+						createdRole = true
 					} else {
-						data.SendEmbed(NewEmbed().
-							SetTitle("ERROR").
-							SetDescription("Resource already found with name %s", role.Name).
-							SetColor(Red))
+						roleFound = true
 					}
 					rows, err := stmtFindResourceRow.Query(role.Name)
 					CheckErr(err)
 
 					next := rows.Next()
-					if next == false {
-						_, err := stmtInsertResourceRow.Exec(role.Name, "")
+					if next {
+						if roleFound {
+							data.SendEmbed(NewEmbed().
+								SetTitle("ERROR").
+								SetDescription("Resource already found with name %s", role.Name).
+								SetColor(Red))
+						}
+						if createdRole {
+							data.SendEmbed(NewEmbed().
+								SetTitle("SUCCESS").
+								SetDescription("Create role with name %s, found resource in database", role.Name).
+								SetColor(Green))
+						}
+					} else {
+						if len(data.Arguments) == 2 {
+							mentions := getChannelMentions(data.Message, 1)
+							CheckErr(err)
+							_, err = stmtInsertResourceRow.Exec(role.Name, "", mentions[0])
+						} else {
+							_, err = stmtInsertResourceRow.Exec(role.Name, "", "")
+						}
+						CheckErr(err)
+						var message string
+						if createdRole {
+							message = "Create role & resource with name %s"
+						} else {
+							message = "Created resource with name %s"
+						}
+
+						data.SendEmbed(NewEmbed().
+							SetTitle("SUCCESS").
+							SetDescription(message, role.Name).
+							SetColor(Green))
+
+						err = rows.Close()
 						CheckErr(err)
 					}
-					err = rows.Close()
-					CheckErr(err)
 					break
 				}
 			} else {
@@ -237,7 +306,6 @@ func main() {
 						}
 						err = rows.Close()
 						CheckErr(err)
-
 					} else {
 						data.SendEmbed(NewEmbed().
 							SetTitle("Incorrect Syntax").
@@ -261,29 +329,24 @@ func main() {
 }
 
 func InitPreparedStatements() {
-	stmt, err := mySQL.Prepare("INSERT INTO " + config.Tables.ResourcesTable + " (resource_name, response_data) VALUES(?,?)")
+	var err error
+	stmtInsertResourceRow, err = mySQL.Prepare("INSERT INTO " + config.Tables.ResourcesTable + " (resource_name, response_data, channel_id) VALUES(?,?,?)")
 	CheckErr(err)
-	stmtInsertResourceRow = stmt
 
-	stmt, err = mySQL.Prepare("SELECT * FROM " + config.Tables.ResourcesTable + " WHERE resource_name = ?")
+	stmtFindResourceRow, err = mySQL.Prepare("SELECT * FROM " + config.Tables.ResourcesTable + " WHERE resource_name = ?")
 	CheckErr(err)
-	stmtFindResourceRow = stmt
 
-	stmt, err = mySQL.Prepare("SELECT resources FROM " + config.Tables.UserTable + " WHERE discord_id = ?")
+	stmtFindResourceColumn, err = mySQL.Prepare("SELECT resources FROM " + config.Tables.UserTable + " WHERE discord_id = ?")
 	CheckErr(err)
-	stmtFindResourceColumn = stmt
 
-	stmt, err = mySQL.Prepare("INSERT INTO " + config.Tables.UserTable + " (token, discord_id, resources, ip_addresses) VALUES(?,?,?,?)")
+	stmtInsertUserRow, err = mySQL.Prepare("INSERT INTO " + config.Tables.UserTable + " (token, discord_id, resources, ip_addresses) VALUES(?,?,?,?)")
 	CheckErr(err)
-	stmtInsertUserRow = stmt
 
-	stmt, err = mySQL.Prepare("SELECT * FROM " + config.Tables.UserTable + " WHERE discord_id = ?")
+	stmtFindUserRow, err = mySQL.Prepare("SELECT * FROM " + config.Tables.UserTable + " WHERE discord_id = ?")
 	CheckErr(err)
-	stmtFindUserRow = stmt
 
-	stmt, err = mySQL.Prepare("UPDATE " + config.Tables.UserTable + " SET resources = ? WHERE discord_id = ?")
+	stmtUpdateUserResourceColumn, err = mySQL.Prepare("UPDATE " + config.Tables.UserTable + " SET resources = ? WHERE discord_id = ?")
 	CheckErr(err)
-	stmtUpdateUserResourceColumn = stmt
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
