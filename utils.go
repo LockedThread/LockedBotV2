@@ -172,9 +172,7 @@ func GetAllResources() (resources []Resource) {
 	return resources
 }
 
-const charset = "abcdefghijklmnopqrstuvwxyz" +
-	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789" +
-	"0123456789"
+const charset = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 var seededRand = rand.New(rand.NewSource(time.Now().UnixNano()))
 
