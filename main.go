@@ -29,6 +29,7 @@ var (
 	stmtGetAllResources    *sql.Stmt
 	stmtDeleteResource     *sql.Stmt
 
+	stmtGetAllUsers              *sql.Stmt
 	stmtUpdateUserResourceColumn *sql.Stmt
 	stmtInsertUserRow            *sql.Stmt
 	stmtFindUserRow              *sql.Stmt
@@ -61,8 +62,31 @@ func main() {
 	discord.AddHandler(messageCreate)
 
 	RegisterCommand(&Command{
-		Aliases: []string{"-importclients"},
+		Aliases: []string{"-roster"},
 		Execute: func(data CommandData) {
+			if IsOwner(data.User) {
+				rows, err := stmtGetAllUsers.Query()
+				CheckErr(err)
+				data.SendMessage("User | Token | Resources | IPAddresses")
+				for rows.Next() {
+					var user User
+					var resourceString string
+					var ipAddressesString string
+					err = rows.Scan(&user.ID, &user.Token, &user.DiscordID, &resourceString, &ipAddressesString)
+
+					st, err := data.Session.User(user.DiscordID)
+					CheckErr(err)
+					data.SendMessage("%s %s %s %s", st.Mention(), user.Token, resourceString, ipAddressesString)
+				}
+			} else {
+				data.SendNoPermission()
+			}
+		},
+	})
+
+	RegisterCommand(&Command{
+		[]string{"-importclients"},
+		func(data CommandData) {
 			if IsOwner(data.User) {
 				guild := data.GetGuild()
 				for e := range guild.Members {
@@ -707,6 +731,10 @@ func InitPreparedStatements() {
 	CheckErr(err)
 
 	stmtDeleteResource, err = mySQL.Prepare("DELETE FROM " + config.Tables.ResourcesTable + " where resource_name = ?")
+	CheckErr(err)
+
+	stmtGetAllUsers, err = mySQL.Prepare("SELECT * FROM " + config.Tables.UserTable)
+	CheckErr(err)
 }
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
