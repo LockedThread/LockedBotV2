@@ -68,17 +68,22 @@ func main() {
 				for e := range guild.Members {
 					member := guild.Members[e]
 
-					rows, err := stmtFindUserRow.Query(member.User.ID)
-					CheckErr(err)
 					resourceArray := GetResourcesFromRoles(data.Session, member)
+					if len(resourceArray) == 0 {
+						continue
+					}
+
 					bytes, err := json.Marshal(resourceArray)
+					CheckErr(err)
+
+					rows, err := stmtFindUserRow.Query(member.User.ID)
 					CheckErr(err)
 
 					if !rows.Next() {
 						licenseKey := RandomString(10)
-						_, err = stmtInsertUserRow.Exec(licenseKey, member.User.ID, "[]", string(bytes))
+						_, err = stmtInsertUserRow.Exec(licenseKey, member.User.ID, string(bytes), "[]")
 						CheckErr(err)
-						/*channel, err := data.Session.UserChannelCreate(member.User.ID)
+						channel, err := data.Session.UserChannelCreate(member.User.ID)
 						if err != nil {
 							data.SendMessage("Unable to message %s their new information.", member.User.Mention())
 						} else {
@@ -89,10 +94,10 @@ func main() {
 							if err != nil {
 								data.SendMessage("Unable to message %s their new information.", member.User.Mention())
 							}
-						}*/
+						}
 					} else {
 						_, err = stmtUpdateUserResourceColumn.Exec(string(bytes), member.User.ID)
-						channel, err := data.Session.UserChannelCreate(member.User.ID)
+						/*channel, err := data.Session.UserChannelCreate(member.User.ID)
 						if err != nil {
 							data.SendMessage("Unable to message %s their new information.", member.User.Mention())
 						} else {
@@ -103,7 +108,7 @@ func main() {
 							if err != nil {
 								data.SendMessage("Unable to message %s their new information.", member.User.Mention())
 							}
-						}
+						}*/
 					}
 				}
 			} else {
@@ -117,7 +122,7 @@ func main() {
 		func(data CommandData) {
 
 			description :=
-				//"-prices | dms you prices on all of our products & services\n" +
+			//"-prices | dms you prices on all of our products & services\n" +
 				"*-addresource {@mention} {resource} | Adds resource to client for the auth system\n" +
 					"*-createresource {name} | Creates resource for the auth system\n" +
 					"*-createclient {@mention} {token} | Creates client in database\n" +
