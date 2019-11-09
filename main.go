@@ -78,7 +78,7 @@ func main() {
 						licenseKey := RandomString(10)
 						_, err = stmtInsertUserRow.Exec(licenseKey, member.User.ID, "[]", string(bytes))
 						CheckErr(err)
-						channel, err := data.Session.UserChannelCreate(member.User.ID)
+						/*channel, err := data.Session.UserChannelCreate(member.User.ID)
 						if err != nil {
 							data.SendMessage("Unable to message %s their new information.", member.User.Mention())
 						} else {
@@ -89,7 +89,7 @@ func main() {
 							if err != nil {
 								data.SendMessage("Unable to message %s their new information.", member.User.Mention())
 							}
-						}
+						}*/
 					} else {
 						_, err = stmtUpdateUserResourceColumn.Exec(string(bytes), member.User.ID)
 						channel, err := data.Session.UserChannelCreate(member.User.ID)
