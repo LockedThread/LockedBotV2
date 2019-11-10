@@ -413,6 +413,7 @@ func main() {
 							}
 						}
 						defer resp.Body.Close()
+						data.SendMessage("@everyone")
 						_, err := data.Session.ChannelMessageSendComplex(resource.DiscordChannelID, &discordgo.MessageSend{
 							Embed: NewEmbed().
 								SetTitle("UPDATE").
@@ -422,6 +423,7 @@ func main() {
 						})
 						CheckErr(err)
 					} else {
+						data.SendMessage("@everyone")
 						_, err := data.Session.ChannelMessageSendEmbed(resource.DiscordChannelID, NewEmbed().
 							SetTitle("UPDATE").
 							SetDescription(strings.Join(data.Arguments[1:len(data.Arguments)], " ")).
@@ -431,9 +433,7 @@ func main() {
 					break
 				}
 			} else {
-
 				data.SendNoPermission()
-
 			}
 		},
 	})
