@@ -431,6 +431,8 @@ func main() {
 
 						CheckErr(err)
 					}
+					err = data.Session.ChannelMessageDelete(data.Channel.ID, data.Message.ID)
+					CheckErr(err)
 					break
 				}
 			} else {
